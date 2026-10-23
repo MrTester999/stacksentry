@@ -6,7 +6,8 @@
 
   **Automatic web-stack fingerprinting with evidence, exact versions, and version-aware CVE intelligence.**
 
-  [![Version](https://img.shields.io/badge/version-1.1.0-39cdb9?style=flat-square)](manifest.json)
+  [![Version](https://img.shields.io/badge/version-2.0.0-39cdb9?style=flat-square)](manifest.json)
+  [![Fingerprints](https://img.shields.io/badge/fingerprints-7%2C628-6389ff?style=flat-square)](#technology-coverage)
   [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](manifest.json)
   [![Data](https://img.shields.io/badge/CVE%20data-OSV%20%2B%20NVD-5d84ff?style=flat-square)](#version-aware-vulnerability-intelligence)
   [![Privacy](https://img.shields.io/badge/page%20fingerprinting-local-29b99e?style=flat-square)](#privacy)
@@ -47,8 +48,11 @@ are never guessed and are never labeled vulnerable.
 - **Automatic scanning:** analyzes every normal website after navigation.
 - **Master On/Off:** stops both automatic and manual analysis and clears badges.
 - **Site exclusions:** pauses Auto Scan for selected hostnames and subdomains.
-- **Six evidence layers:** headers, metadata, DOM markers, script/stylesheet
-  URLs, dynamically loaded resource URLs, and runtime globals.
+- **Broad maintained catalog:** 7,628 technology fingerprints across 109
+  categories, pinned to a reviewed OpenWapp/WebAppAnalyzer dataset revision.
+- **Eight passive evidence layers:** headers, metadata, HTML, visible text,
+  inline scripts and styles, asset URLs, dynamic resources, and selected safe
+  runtime globals.
 - **Technology icons:** every detected product has a bundled local brand or
   category icon; no remote icon requests are made.
 - **Version extraction:** records the version only when a fingerprint exposes it.
@@ -62,21 +66,19 @@ are never guessed and are never labeled vulnerable.
 
 ## Technology coverage
 
-The initial catalog covers common technologies across:
+StackSentry combines two local sources:
 
-- CMS and e-commerce: WordPress, WooCommerce, Elementor, Drupal, Joomla,
-  Shopify, Wix, and Webflow.
-- Frontend frameworks: React, Next.js, Vue, Nuxt, Angular, Svelte, Astro, and
-  Alpine.js.
-- JavaScript libraries: jQuery, Bootstrap, Lodash, Axios, Moment.js, GSAP,
-  RequireJS, Select2, Popper, Font Awesome, and Sentry.
-- Backends: PHP, ASP.NET, Express, Laravel, Django, and Ruby on Rails.
-- Servers and infrastructure: nginx, Apache HTTP Server, IIS, Cloudflare,
-  LiteSpeed, HTTP/3, Akamai, Fastly, Vercel, and Netlify.
-- Analytics and APIs: Google Analytics, Google Tag Manager, Meta Pixel, Hotjar,
-  Cloudflare Browser Insights, and GraphQL.
+1. A focused **StackSentry Core** layer for high-value version and protocol
+   fingerprints with reviewed OSV/NVD mappings.
+2. A pinned **OpenWapp/WebAppAnalyzer** catalog with 7,628 definitions across
+   109 categories, including CMS, e-commerce, hosting, web servers, frameworks,
+   libraries, analytics, security, payment, advertising, accessibility,
+   customer support, maps, media, fonts, databases, and developer tooling.
 
-The rule catalog is deliberately extensible in [`data/technologies.js`](data/technologies.js).
+Overlapping detections are merged into one evidence-backed result. The catalog
+is bundled locally and never downloaded while browsing. Coverage is broad, but
+no passive browser extension can guarantee identification of every hidden
+backend or intentionally obfuscated dependency.
 
 ## Version-aware vulnerability intelligence
 
@@ -95,7 +97,7 @@ of performing a broad product-name lookup.
 
 ## Installation
 
-1. Download and extract [`stacksentry-1.1.0.zip`](dist/stacksentry-1.1.0.zip).
+1. Download and extract [`stacksentry-2.0.0.zip`](dist/stacksentry-2.0.0.zip).
 2. Open `chrome://extensions`.
 3. Enable **Developer mode**.
 4. Select **Load unpacked**.
@@ -164,19 +166,27 @@ npm run build
 ```
 
 The check suite validates manifest assets, JavaScript syntax, positive and
-nearby-negative fingerprints, exact-version OSV/NVD normalization, the master
-switch, storage, and Chrome event registration.
+nearby-negative fingerprints, all 7,628 local catalog icons, catalog/core
+deduplication, exact-version OSV/NVD normalization, the master switch, storage,
+and Chrome event registration.
+
+## License
+
+StackSentry v2 is distributed under GPL-3.0 because it bundles the maintained
+GPL-3.0 OpenWapp/WebAppAnalyzer fingerprint dataset. The complete pinned
+fingerprint source and all dependency notices are included in the release.
 
 ## Documentation
 
 - [Detailed documentation](DOCUMENTATION.md)
 - [Plain-text guide](DOCUMENTATION.txt)
 - [Changelog](CHANGELOG.md)
-- [Release ZIP](dist/stacksentry-1.1.0.zip)
+- [Release ZIP](dist/stacksentry-2.0.0.zip)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ---
 
 <div align="center">
-  <strong>StackSentry v1.1.0</strong><br>
+  <strong>StackSentry v2.0.0</strong><br>
   Evidence first. Exact versions. Honest vulnerability intelligence.
 </div>

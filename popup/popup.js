@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const elements = Object.fromEntries(["autoScan", "checkCves", "cveCount", "excludeSite", "masterEnabled", "openReport", "scanSite", "siteState", "siteTitle", "siteUrl", "summary", "technologyCount", "technologyPreview", "toast", "versionCount"].map((id) => [id, $(id)]));
+const elements = Object.fromEntries(["autoScan", "catalogCoverage", "checkCves", "cveCount", "excludeSite", "masterEnabled", "openReport", "scanSite", "siteState", "siteTitle", "siteUrl", "summary", "technologyCount", "technologyPreview", "toast", "versionCount"].map((id) => [id, $(id)]));
 let active = null;
 let result = null;
 let currentSettings = null;
@@ -41,6 +41,7 @@ function render() {
   elements.technologyCount.textContent = technologySummary?.total ?? "—";
   elements.versionCount.textContent = technologySummary?.versioned ?? "—";
   elements.cveCount.textContent = vulnerabilitySummary?.total ?? "—";
+  elements.catalogCoverage.textContent = result?.catalogSize ? `${result.catalogSize.toLocaleString()} maintained fingerprints` : "Maintained catalog ready";
   elements.siteState.className = `site-state${vulnerabilitySummary?.total ? " risk" : result ? " ready" : ""}`;
   elements.openReport.disabled = !result || !enabled;
   elements.scanSite.disabled = !enabled;
@@ -50,12 +51,13 @@ function render() {
     empty.textContent = result ? "No known technologies detected." : "No scan results for this page yet.";
     elements.technologyPreview.append(empty);
   } else {
-    for (const technology of result.technologies.slice(0, 5)) {
+    for (const technology of result.technologies.slice(0, 3)) {
       const pill = document.createElement("span");
       pill.className = "technology-pill";
       const icon = document.createElement("img");
-      icon.src = `../icons/technologies/${technology.id}.svg`;
+      icon.src = technology.source === "OpenWapp" ? `../icons/catalog/${technology.id}.svg` : `../icons/technologies/${technology.id}.svg`;
       icon.alt = "";
+      pill.title = `${technology.name} · ${technology.category} · ${technology.confidence} confidence`;
       pill.append(icon, document.createTextNode(technology.name));
       if (technology.version) {
         const version = document.createElement("b");
@@ -63,6 +65,12 @@ function render() {
         pill.append(version);
       }
       elements.technologyPreview.append(pill);
+    }
+    if (result.technologies.length > 3) {
+      const more = document.createElement("span");
+      more.className = "technology-more";
+      more.textContent = `+${result.technologies.length - 3} more`;
+      elements.technologyPreview.append(more);
     }
   }
 }

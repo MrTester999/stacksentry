@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
-import { analyzeEvidence, summarizeTechnologies } from "../shared/detector.js";
+import { readFile, readdir, stat } from "node:fs/promises";
+import fingerprints from "@openwapp/fingerprints";
+import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
 import { TECHNOLOGIES } from "../data/technologies.js";
+import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, openWappTechnologyId } from "../vendor/openwapp-engine.js";
 
 const root = new URL("../", import.meta.url);
 const json = async (path) => JSON.parse(await readFile(new URL(path, root), "utf8"));
@@ -21,13 +23,19 @@ const required = [
   "data/technologies.js", "shared/detector.js", "shared/vulnerabilities.js",
   "popup/popup.css", "popup/popup.js", "report/index.html", "report/report.css", "report/report.js",
   "screenshots/stacksentry-popup.png", "screenshots/stacksentry-report.png",
-  "README.md", "DOCUMENTATION.md", "DOCUMENTATION.txt", "CHANGELOG.md"
+  "vendor/openwapp-engine.js", "vendor/openwapp-fingerprints-LICENSE.txt", "vendor/openwapp-matcher-LICENSE.txt", "vendor/openwapp-upstream.json",
+  "vendor/openwapp-source/index.js", "vendor/openwapp-source/data/categories.json", "vendor/openwapp-source/data/upstream.json",
+  "README.md", "DOCUMENTATION.md", "DOCUMENTATION.txt", "CHANGELOG.md", "LICENSE", "THIRD_PARTY_NOTICES.md"
 ];
 for (const path of new Set(required)) assert.ok((await stat(new URL(path, root))).size > 0, `${path} is empty`);
 for (const technology of TECHNOLOGIES) {
   assert.ok((await stat(new URL(`icons/technologies/${technology.id}.svg`, root))).size > 0, `${technology.id} icon is missing`);
 }
 assert.ok((await stat(new URL("vendor/simple-icons-LICENSE.txt", root))).size > 0, "Simple Icons license is missing");
+assert.equal(OPENWAPP_CATALOG_SIZE, Object.keys(fingerprints.technologies).length);
+const catalogIconFiles = new Set(await readdir(new URL("icons/catalog/", root)));
+assert.equal(catalogIconFiles.size, OPENWAPP_CATALOG_SIZE, "catalog icon count does not match catalog size");
+for (const name of Object.keys(fingerprints.technologies)) assert.ok(catalogIconFiles.has(`${openWappTechnologyId(name)}.svg`), `${name} catalog icon is missing`);
 for (const path of ["background/service-worker.js", "data/technologies.js", "shared/detector.js", "shared/vulnerabilities.js", "popup/popup.js", "report/report.js"]) {
   execFileSync(process.execPath, ["--check", new URL(path, root).pathname], { stdio: "pipe" });
 }
@@ -126,6 +134,23 @@ const expandedNegatives = analyzeEvidence({
 });
 assert.equal(expandedNegatives.some((item) => ["laravel", "litespeed", "http3", "cloudflare-browser-insights", "font-awesome", "popper", "select2"].includes(item.id)), false, "expanded nearby-negative fixture created a false positive");
 
+const broadCatalog = analyzeOpenWappEvidence({
+  url: "https://catalog.example.test/",
+  headers: { server: "cloudflare", "x-powered-by": "PHP/8.2.7" },
+  scripts: [{ src: "https://cdn.example.test/jquery-3.7.1.min.js" }],
+  links: [{ href: "https://cdn.example.test/bootstrap/5.3.3/css/bootstrap.min.css", rel: "stylesheet" }],
+  resources: [], meta: [], html: "<html><body>synthetic fixture</body></html>", text: "synthetic fixture", globals: {}, js: {}
+});
+const broadByName = Object.fromEntries(broadCatalog.map((item) => [item.name, item]));
+for (const name of ["Cloudflare", "PHP", "jQuery"]) assert.ok(broadByName[name], `${name} maintained-catalog fingerprint was not detected`);
+assert.equal(broadByName.PHP.version, "8.2.7");
+assert.equal(broadByName.jQuery.version, "3.7.1");
+assert.equal(broadByName.jQuery.source, "OpenWapp");
+assert.ok(broadByName.jQuery.evidence.some((item) => item.type === "asset"));
+const combined = mergeTechnologyDetections(findings, broadCatalog);
+assert.equal(combined.filter((item) => item.name === "jQuery").length, 1, "core and maintained catalog produced duplicate jQuery rows");
+assert.equal(combined.find((item) => item.name === "jQuery").source, "Core + OpenWapp");
+
 const summary = summarizeTechnologies(findings);
 assert.equal(summary.total, findings.length);
 assert.ok(summary.versioned >= 7);
@@ -208,6 +233,8 @@ assert.equal(response.data.summary.vulnerabilities.total, 0);
 console.log(`✓ Manifest v${manifest.version} and ${new Set(required).size} required assets`);
 console.log(`✓ ${findings.length} technology detections across header, meta, DOM, script, and global evidence`);
 console.log(`✓ ${TECHNOLOGIES.length} technology definitions have valid matcher syntax`);
+console.log(`✓ ${OPENWAPP_CATALOG_SIZE} maintained catalog fingerprints and local icons`);
 console.log("✓ Positive and nearby-negative fingerprint fixtures");
+console.log("✓ Core/catalog deduplication with catalog evidence and version extraction");
 console.log("✓ OSV and NVD exact-version normalization with no-version skip");
 console.log("✓ Master switch, scan message, storage, and listener smoke tests");

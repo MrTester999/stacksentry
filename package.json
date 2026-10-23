@@ -1,16 +1,20 @@
 {
   "name": "stacksentry",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Local-first web technology fingerprinting and version-aware vulnerability intelligence for Chromium.",
   "scripts": {
     "check": "node scripts/check.mjs",
+    "catalog": "node scripts/build-openwapp.mjs",
     "icons": "node scripts/generate-technology-icons.mjs",
     "package": "node scripts/package.mjs",
-    "build": "npm run icons && npm run check && npm run package"
+    "build": "npm run catalog && npm run icons && npm run check && npm run package"
   },
   "devDependencies": {
+    "@openwapp/fingerprints": "0.1.0",
+    "@openwapp/matcher": "0.1.0",
+    "esbuild": "0.28.2",
     "simple-icons": "16.35.0"
   }
 }

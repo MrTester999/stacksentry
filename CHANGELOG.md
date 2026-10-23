@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.0
+
+- Expanded passive detection from 49 focused definitions to a combined catalog
+  of 7,628 maintained technology fingerprints across 109 categories.
+- Bundled the pinned OpenWapp matcher and WebAppAnalyzer-derived catalog locally;
+  no detection rules are downloaded while browsing.
+- Added bounded visible-text, inline-script, inline-style, resource, and selected
+  safe global evidence without collecting cookies.
+- Merged overlapping Core and OpenWapp detections to prevent duplicate rows while
+  preserving exact-version OSV/NVD mappings.
+- Added a deterministic local icon for every catalog technology and verified the
+  complete icon set during builds.
+- Increased popup and report typography, added catalog coverage and detection
+  source labels, and clarified technology cards.
+- Added GPL-3.0 licensing and complete third-party notices for the bundled catalog.
+
 ## 1.1.0
 
 - Added detection for LiteSpeed, HTTP/3, Cloudflare Browser Insights, Select2,

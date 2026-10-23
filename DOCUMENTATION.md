@@ -11,11 +11,12 @@ versions against OSV.dev or the NIST NVD.
 1. Chrome reports that an HTTP or HTTPS tab finished loading.
 2. StackSentry checks the master switch, Auto Scan setting, and hostname
    exclusion list.
-3. The extension collects a bounded local fingerprint from metadata, DOM
-   markers, script and stylesheet URLs, dynamically loaded resource URLs,
-   selected globals, and response headers.
-4. The local detector evaluates every technology rule and records evidence,
-   confidence, and any explicit version.
+3. The extension collects a bounded local fingerprint from metadata, HTML,
+   visible text, inline scripts and styles, asset URLs, dynamic resource URLs,
+   selected safe globals, and response headers.
+4. StackSentry Core and the bundled 7,628-definition maintained catalog run
+   locally. Overlapping results are merged with evidence, confidence, and any
+   explicit version.
 5. Exact supported versions are checked against the appropriate vulnerability
    service. Results are cached locally for 24 hours.
 6. The per-tab badge and report are updated.
@@ -54,6 +55,7 @@ the time of the query. It is not a guarantee that the product is vulnerability-f
 ## Data handling
 
 - DOM content is bounded to 1.5 MB and used only during local detection.
+- Visible text, inline scripts, and inline styles use separate bounded samples.
 - DOM content and response headers are not stored in completed reports.
 - `Set-Cookie` is excluded from collection.
 - Temporary scan results use `chrome.storage.session` and disappear when the
@@ -70,7 +72,7 @@ headers. Always inspect the evidence and validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-1.1.0.zip`.
+1. Extract `dist/stacksentry-2.0.0.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.

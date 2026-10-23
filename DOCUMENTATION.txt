@@ -1,4 +1,4 @@
-STACKSENTRY v1.1.0
+STACKSENTRY v2.0.0
 ==================
 
 PURPOSE
@@ -8,7 +8,7 @@ versions and evidence, and checks exact supported versions against OSV or NVD.
 
 QUICK START
 -----------
-1. Extract dist/stacksentry-1.1.0.zip.
+1. Extract dist/stacksentry-2.0.0.zip.
 2. Open chrome://extensions.
 3. Enable Developer mode.
 4. Select Load unpacked and choose the extracted stacksentry folder.
@@ -29,6 +29,13 @@ ACCURACY
 Every detection contains evidence and a confidence score. CVE checks run only
 when a reliable exact version and reviewed package/CPE mapping are available.
 Unknown versions are not guessed and are not labeled vulnerable.
+
+COVERAGE
+--------
+StackSentry combines focused core rules with 7,628 maintained technology
+fingerprints across 109 categories. All rules and icons are bundled locally.
+Broad passive coverage does not guarantee discovery of hidden backends or
+intentionally removed fingerprints.
 
 PRIVACY
 -------

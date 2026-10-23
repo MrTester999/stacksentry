@@ -1,0 +1,44 @@
+{
+  "name": "@openwapp/fingerprints",
+  "version": "0.1.0",
+  "description": "The enthec/webappanalyzer technology fingerprints, kept in sync with upstream.",
+  "homepage": "https://github.com/k3dom/openwapp/tree/master/packages/fingerprints#readme",
+  "bugs": {
+    "url": "https://github.com/k3dom/openwapp/issues"
+  },
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/k3dom/openwapp.git",
+    "directory": "packages/fingerprints"
+  },
+  "files": [
+    "data",
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./*": "./data/*",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@openwapp/oxfmt": "0.0.0",
+    "oxfmt": "0.68.0"
+  },
+  "scripts": {
+    "sync": "scripts/sync.sh",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "pnpm run format:check"
+  }
+}

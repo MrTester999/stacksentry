@@ -1,5 +1,6 @@
-import { analyzeEvidence, summarizeTechnologies } from "../shared/detector.js";
+import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
+import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE } from "../vendor/openwapp-engine.js";
 
 const RESULT_PREFIX = "scanResult:";
 const HEADER_PREFIX = "responseHeaders:";
@@ -99,6 +100,16 @@ async function collectDomEvidence(tabId) {
     func: () => {
       const MAX_HTML = 1_500_000;
       const html = document.documentElement?.outerHTML || "";
+      const boundedText = (nodes, limit) => {
+        let output = "";
+        for (const node of nodes) {
+          const value = node.textContent || "";
+          if (!value) continue;
+          output += `${value.slice(0, Math.max(0, limit - output.length))}\n`;
+          if (output.length >= limit) break;
+        }
+        return output;
+      };
       return {
         title: document.title,
         url: location.href,
@@ -106,6 +117,9 @@ async function collectDomEvidence(tabId) {
         htmlTruncated: html.length > MAX_HTML,
         scripts: [...document.scripts].slice(0, 600).map((script) => ({ src: script.src || "", type: script.type || "" })),
         links: [...document.querySelectorAll("link[href]")].slice(0, 600).map((link) => ({ href: link.href, rel: link.rel || "" })),
+        inlineScripts: boundedText([...document.scripts].filter((script) => !script.src), 300_000),
+        styles: boundedText([...document.querySelectorAll("style")], 200_000),
+        text: (document.body?.innerText || "").slice(0, 200_000),
         resources: performance.getEntriesByType("resource").slice(0, 1200).map((entry) => ({
           name: entry.name || "",
           initiatorType: entry.initiatorType || ""
@@ -133,7 +147,7 @@ async function collectGlobalEvidence(tabId) {
           return typeof found === "string" || typeof found === "number" ? String(found) : found ? "true" : "";
         } catch { return ""; }
       };
-      return {
+      const globals = {
         jquery: value(() => window.jQuery?.fn?.jquery),
         select2: value(() => window.jQuery?.fn?.select2),
         popper: value(() => window.Popper?.version || window.Popper?.Defaults),
@@ -151,6 +165,23 @@ async function collectGlobalEvidence(tabId) {
         alpine: value(() => window.Alpine?.version),
         requirejs: value(() => window.requirejs?.version),
         sentry: value(() => window.Sentry?.SDK_VERSION || window.__SENTRY__)
+      };
+      return {
+        ...globals,
+        js: {
+          "$.fn.jquery": globals.jquery,
+          "jQuery.fn.jquery": globals.jquery,
+          "React.version": globals.react,
+          "Vue.version": globals.vue,
+          "angular.version.full": globals.angular,
+          "_.VERSION": globals.lodash,
+          "axios.VERSION": globals.axios,
+          "moment.version": globals.moment,
+          "bootstrap.Tooltip.VERSION": globals.bootstrap,
+          "gsap.version": globals.gsap,
+          "Alpine.version": globals.alpine,
+          "requirejs.version": globals.requirejs
+        }
       };
     }
   });
@@ -207,7 +238,8 @@ async function scanTab(tabId, options = {}) {
   ]);
   const captured = headerState[`${HEADER_PREFIX}${tabId}`];
   const headers = captured?.url === tab.url ? captured.headers : {};
-  const detected = analyzeEvidence({ ...dom, globals, headers });
+  const evidence = { ...dom, globals, js: globals.js || {}, headers };
+  const detected = mergeTechnologyDetections(analyzeEvidence(evidence), analyzeOpenWappEvidence(evidence));
   const shouldCheckCves = options.checkCves ?? currentSettings.checkCves;
   const technologies = options.deferCves && shouldCheckCves
     ? detected.map((item) => ({ ...item, vulnerabilityStatus: item.version && (item.package || item.cpe) ? "pending" : item.version ? "unsupported" : "version-unknown", vulnerabilities: [] }))
@@ -220,6 +252,7 @@ async function scanTab(tabId, options = {}) {
     scannedAt: new Date().toISOString(),
     htmlTruncated: Boolean(dom.htmlTruncated),
     statusCode: captured?.statusCode || null,
+    catalogSize: OPENWAPP_CATALOG_SIZE,
     technologies,
     cveLookupPending: Boolean(options.deferCves && shouldCheckCves),
     summary: {

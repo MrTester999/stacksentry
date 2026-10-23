@@ -3,3 +3,4 @@ node_modules/
 dist/*.zip
 !dist/stacksentry-1.0.0.zip
 !dist/stacksentry-1.1.0.zip
+!dist/stacksentry-2.0.0.zip

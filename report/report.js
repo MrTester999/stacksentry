@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const elements = Object.fromEntries(["affectedTotal", "busy", "categoryNav", "clearFilters", "criticalCount", "exportReport", "highCount", "highRiskTotal", "lowCount", "mediumCount", "rescan", "resultCount", "scanMeta", "search", "siteIcon", "siteTitle", "siteUrl", "technologyList", "technologyTotal", "toast", "versionTotal", "viewFilter", "vulnerabilityList", "vulnerabilityTotal"].map((id) => [id, $(id)]));
+const elements = Object.fromEntries(["affectedTotal", "busy", "catalogCoverage", "categoryNav", "clearFilters", "criticalCount", "exportReport", "highCount", "highRiskTotal", "lowCount", "mediumCount", "rescan", "resultCount", "scanMeta", "search", "siteIcon", "siteTitle", "siteUrl", "technologyList", "technologyTotal", "toast", "versionTotal", "viewFilter", "vulnerabilityList", "vulnerabilityTotal"].map((id) => [id, $(id)]));
 const tabId = Number(new URL(location.href).searchParams.get("tab"));
 let result = null;
 let selectedCategory = "All";
@@ -42,7 +42,7 @@ function filteredTechnologies() {
     if (view === "versioned" && !technology.version) return false;
     if (view === "unknown" && technology.version) return false;
     if (!search) return true;
-    const haystack = [technology.name, technology.category, technology.version, ...(technology.evidence || []).flatMap((item) => [item.type, item.detail]), ...(technology.vulnerabilities || []).flatMap((item) => [item.id, item.summary])].join(" ").toLowerCase();
+    const haystack = [technology.name, technology.category, technology.version, technology.source, ...(technology.evidence || []).flatMap((item) => [item.type, item.detail]), ...(technology.vulnerabilities || []).flatMap((item) => [item.id, item.summary])].join(" ").toLowerCase();
     return haystack.includes(search);
   });
 }
@@ -79,12 +79,12 @@ function renderTechnologies() {
     const icon = document.createElement("span");
     icon.className = "tech-icon";
     const iconImage = document.createElement("img");
-    iconImage.src = `../icons/technologies/${technology.id}.svg`;
+    iconImage.src = technology.source === "OpenWapp" ? `../icons/catalog/${technology.id}.svg` : `../icons/technologies/${technology.id}.svg`;
     iconImage.alt = "";
     icon.append(iconImage);
     const name = document.createElement("div");
     name.className = "tech-name";
-    name.append(textNode("strong", technology.name), textNode("span", technology.category));
+    name.append(textNode("strong", technology.name), textNode("span", technology.category), textNode("em", technology.source || "StackSentry Core"));
     const version = document.createElement("div");
     version.className = "version";
     version.append(textNode("strong", technology.version || "Unknown", technology.version ? "" : "unknown"), textNode("span", "Version"));
@@ -153,6 +153,7 @@ function render() {
   elements.siteTitle.textContent = result.title;
   elements.siteUrl.textContent = result.url;
   elements.siteIcon.textContent = result.host?.[0]?.toUpperCase() || "S";
+  elements.catalogCoverage.textContent = `${(result.catalogSize || 0).toLocaleString()} maintained fingerprints`;
   elements.scanMeta.textContent = `Scanned ${new Date(result.scannedAt).toLocaleString()} · HTTP ${result.statusCode || "unknown"}${result.htmlTruncated ? " · large DOM sample truncated safely" : ""}`;
   elements.technologyTotal.textContent = tech.total;
   elements.versionTotal.textContent = tech.versioned;

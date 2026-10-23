@@ -5,7 +5,7 @@ const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
 const archive = `dist/stacksentry-${manifest.version}.zip`;
 execFileSync("zip", ["-q", "-r", "-FS", archive,
   "manifest.json", "background", "data", "shared", "popup", "report", "icons", "screenshots", "vendor",
-  "README.md", "DOCUMENTATION.md", "DOCUMENTATION.txt", "CHANGELOG.md"
+  "README.md", "DOCUMENTATION.md", "DOCUMENTATION.txt", "CHANGELOG.md", "LICENSE", "THIRD_PARTY_NOTICES.md"
 ], { stdio: "inherit" });
-execFileSync("unzip", ["-t", archive], { stdio: "inherit" });
+execFileSync("unzip", ["-tq", archive], { stdio: "inherit" });
 console.log(`Created ${archive}`);

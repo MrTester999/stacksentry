@@ -26,3 +26,17 @@ footer { display:flex; align-items:center; margin-top:12px; padding-top:10px; bo
 #toast { position:fixed; left:12px; right:12px; bottom:10px; transform:translateY(55px); padding:9px 11px; border:1px solid #37e0c84a; border-radius:9px; background:#10202b; color:#d8fff8; font-size:8.5px; opacity:0; transition:.18s; box-shadow:0 10px 30px #000b; }#toast.show{transform:none;opacity:1}#toast.error{border-color:#ff5f7560;color:#ffd7dd}
 @keyframes spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { * { animation:none!important; transition:none!important; } }
+
+/* v2 clarity pass */
+html,body{width:430px;min-width:430px;max-width:430px}
+body{font-size:13px}
+main{padding:18px}
+.brand h1{font-size:19px}.brand p{font-size:8.5px}.brand>span{font-size:7.5px}
+.site-card small{font-size:8px}.site-card strong{font-size:12.5px}.site-card p{font-size:9.5px}
+.summary small{font-size:7.5px}.summary strong{font-size:19px}
+.technology-preview{gap:6px;overflow-x:auto;scrollbar-width:none}.technology-preview::-webkit-scrollbar{display:none}
+.technology-pill{max-width:132px;padding:7px 9px;font-size:8.5px}.technology-pill img{width:14px;height:14px}
+.technology-more{flex:0 0 auto;padding:7px 9px;border:1px dashed #2b4058;border-radius:99px;color:#8ca0b8!important;font-weight:800}
+.scan-button strong,.report-button strong{font-size:11.5px}.scan-button small,.report-button small{font-size:8.8px}
+.controls strong{font-size:10.5px}.controls small{font-size:8.3px}
+footer{font-size:7.8px}footer b{color:#8fb7b0;font-weight:700}

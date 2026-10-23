@@ -101,10 +101,49 @@ export function analyzeEvidence(evidence, technologies = TECHNOLOGIES) {
       versionConfidence: bucket.versionConfidence,
       evidence: bucket.evidence,
       package: mappedPackage,
-      cpe: technology.cpe || ""
+      cpe: technology.cpe || "",
+      source: "StackSentry Core"
     });
   }
   return output.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
+
+function technologyKey(name) {
+  return String(name || "").toLowerCase().replace(/\bjs\b/g, "javascript").replace(/[^a-z0-9]+/g, "");
+}
+
+export function mergeTechnologyDetections(core = [], catalog = []) {
+  const merged = new Map();
+  for (const technology of [...core, ...catalog]) {
+    const key = technologyKey(technology.name);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { ...technology, evidence: [...(technology.evidence || [])] });
+      continue;
+    }
+    const seen = new Set((existing.evidence || []).map((item) => `${item.type}\0${item.detail}`));
+    const evidence = [...(existing.evidence || [])];
+    for (const item of technology.evidence || []) {
+      const evidenceKey = `${item.type}\0${item.detail}`;
+      if (!seen.has(evidenceKey) && evidence.length < 8) evidence.push(item);
+      seen.add(evidenceKey);
+    }
+    const score = Math.max(existing.score || 0, technology.score || 0);
+    merged.set(key, {
+      ...technology,
+      ...existing,
+      score,
+      confidence: score >= 80 ? "high" : score >= 50 ? "medium" : "low",
+      version: existing.version || technology.version || "",
+      versionConfidence: existing.version ? existing.versionConfidence : technology.versionConfidence || "",
+      package: existing.package || technology.package || null,
+      cpe: existing.cpe || technology.cpe || "",
+      website: existing.website || technology.website || "",
+      source: existing.source === technology.source ? existing.source : "Core + OpenWapp",
+      evidence
+    });
+  }
+  return [...merged.values()].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 }
 
 export function summarizeTechnologies(technologies) {
