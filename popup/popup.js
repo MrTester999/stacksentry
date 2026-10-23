@@ -23,6 +23,26 @@ function hostFor(url) {
   try { return new URL(url).hostname; } catch { return ""; }
 }
 
+function vulnerabilityLabel(technology) {
+  const count = technology.vulnerabilities?.length || 0;
+  if (count) return { text: `${count} confirmed CVE${count === 1 ? "" : "s"}`, className: "affected" };
+  return {
+    checked: { text: "0 CVEs returned", className: "checked" },
+    pending: { text: "Checking exact version…", className: "pending" },
+    "version-unknown": { text: "Version unknown", className: "unknown" },
+    disabled: { text: "CVE check off", className: "muted" },
+    "lookup-limit": { text: "Not checked · scan limit", className: "muted" },
+    unsupported: { text: "No verified mapping", className: "muted" },
+    error: { text: "Lookup failed", className: "error" }
+  }[technology.vulnerabilityStatus] || { text: "Not checked", className: "muted" };
+}
+
+function technologyOrder(a, b) {
+  return Number(Boolean(b.vulnerabilities?.length)) - Number(Boolean(a.vulnerabilities?.length))
+    || Number(Boolean(b.version)) - Number(Boolean(a.version))
+    || a.name.localeCompare(b.name);
+}
+
 function render() {
   const host = hostFor(active?.url);
   const excluded = currentSettings?.excludedHosts?.some((item) => host === item || host.endsWith(`.${item}`));
@@ -60,20 +80,35 @@ function render() {
       const items = document.createElement("div");
       items.className = "technology-items";
       group.append(heading, items);
-      for (const technology of technologies.sort((a, b) => a.name.localeCompare(b.name))) {
-      const pill = document.createElement("span");
-      pill.className = "technology-pill";
-      const icon = document.createElement("img");
-      icon.src = technology.source === "OpenWapp" ? `../icons/catalog/${technology.id}.svg` : `../icons/technologies/${technology.id}.svg`;
-      icon.alt = "";
-      pill.title = `${technology.name} · ${technology.category} · ${technology.confidence} confidence`;
-      pill.append(icon, document.createTextNode(technology.name));
-      if (technology.version) {
-        const version = document.createElement("b");
-        version.textContent = ` ${technology.version}`;
-        pill.append(version);
-      }
-      items.append(pill);
+      for (const technology of technologies.sort(technologyOrder)) {
+        const card = document.createElement("article");
+        card.className = `technology-item${technology.vulnerabilities?.length ? " affected" : ""}`;
+        const icon = document.createElement("img");
+        icon.src = technology.source === "OpenWapp" ? `../icons/catalog/${technology.id}.svg` : `../icons/technologies/${technology.id}.svg`;
+        icon.alt = "";
+        const identity = document.createElement("div");
+        identity.className = "technology-identity";
+        const name = document.createElement("strong");
+        name.textContent = technology.name;
+        const confidence = document.createElement("small");
+        confidence.textContent = `${technology.score}% ${technology.confidence} confidence`;
+        identity.append(name, confidence);
+        const version = document.createElement("div");
+        version.className = `technology-version${technology.version ? " exact" : ""}`;
+        version.append(Object.assign(document.createElement("small"), { textContent: technology.version ? "CONFIRMED" : "VERSION" }), Object.assign(document.createElement("b"), { textContent: technology.version || "Unknown · not exposed" }));
+        const statusData = vulnerabilityLabel(technology);
+        const status = document.createElement("span");
+        status.className = `technology-cve ${statusData.className}`;
+        status.textContent = statusData.text;
+        card.title = `${technology.name} · ${technology.version ? `exact version ${technology.version}` : "version unknown"} · ${statusData.text}`;
+        card.append(icon, identity, version, status);
+        if (technology.vulnerabilities?.length) {
+          const ids = document.createElement("div");
+          ids.className = "technology-cve-ids";
+          ids.textContent = technology.vulnerabilities.slice(0, 3).map((item) => item.id).join(" · ");
+          card.append(ids);
+        }
+        items.append(card);
       }
       elements.technologyPreview.append(group);
     }
@@ -143,3 +178,11 @@ void (async () => {
     notify(error.message, true);
   }
 })();
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "session" || !active?.id) return;
+  const updated = changes[`scanResult:${active.id}`]?.newValue;
+  if (!updated) return;
+  result = updated;
+  render();
+});

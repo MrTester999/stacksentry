@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.2.0
+
+- Redesigned the popup inventory as category-grouped rows with icon,
+  confidence, confirmed version, CVE status, and matched CVE IDs.
+- Added exact-query provenance to completed vulnerability lookups: source,
+  package or CPE, queried version, and check timestamp.
+- Separated disabled, lookup-limit, unsupported, version-unknown, pending,
+  checked, and error states so unqueried technologies are never presented as
+  clean results.
+- Made manual scans return local detections immediately while OSV/NVD checks
+  continue asynchronously; popup and report update live when checks finish.
+- Kept version reporting conservative: observable versions are displayed and
+  missing versions remain unknown instead of being guessed.
+- Unified all catalog JavaScript version reads through descriptor-only traversal
+  and verified that throwing getters and callable values are never invoked.
+
 ## 2.1.0
 
 - Expanded runtime inspection from a short hand-picked global list to all 5,606

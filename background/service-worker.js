@@ -1,5 +1,6 @@
 import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
+import { collectCatalogProperties } from "../shared/safe-properties.js";
 import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, OPENWAPP_REQUIREMENTS } from "../vendor/openwapp-engine.js";
 
 const RESULT_PREFIX = "scanResult:";
@@ -172,68 +173,29 @@ async function collectGlobalEvidence(tabId) {
     target: { tabId },
     world: "MAIN",
     args: [OPENWAPP_REQUIREMENTS.js],
-    func: (requiredPaths) => {
-      const value = (reader) => {
-        try {
-          const found = reader();
-          return typeof found === "string" || typeof found === "number" ? String(found) : found ? "true" : "";
-        } catch { return ""; }
-      };
-      const globals = {
-        jquery: value(() => window.jQuery?.fn?.jquery),
-        select2: value(() => window.jQuery?.fn?.select2),
-        popper: value(() => window.Popper?.version || window.Popper?.Defaults),
-        fontawesome: value(() => window.FontAwesome || document.querySelector("style[data-fa-i2svg], link[href*='font-awesome'], link[href*='fontawesome']")),
-        react: value(() => window.React?.version || document.querySelector("[data-reactroot]")),
-        nextjs: value(() => window.__NEXT_DATA__),
-        vue: value(() => window.Vue?.version || document.querySelector("[data-v-app]")),
-        nuxt: value(() => window.__NUXT__ || document.querySelector("#__nuxt")),
-        angular: value(() => window.angular?.version?.full || document.querySelector("[ng-version]")),
-        lodash: value(() => window._?.VERSION),
-        axios: value(() => window.axios?.VERSION),
-        moment: value(() => window.moment?.version),
-        bootstrap: value(() => window.bootstrap?.Tooltip?.VERSION || window.jQuery?.fn?.tooltip?.Constructor?.VERSION),
-        gsap: value(() => window.gsap?.version),
-        alpine: value(() => window.Alpine?.version),
-        requirejs: value(() => window.requirejs?.version),
-        sentry: value(() => window.Sentry?.SDK_VERSION || window.__SENTRY__)
-      };
-      const safePathValue = (path) => {
-        const parts = String(path).trim().split(".").filter(Boolean);
-        let current = window;
-        for (const part of parts) {
-          if ((typeof current !== "object" && typeof current !== "function") || current === null) return "";
-          let descriptor;
-          try { descriptor = Object.getOwnPropertyDescriptor(current, part); }
-          catch { return ""; }
-          if (!descriptor || !("value" in descriptor)) return "";
-          current = descriptor.value;
-        }
-        if (typeof current === "string" || typeof current === "number" || typeof current === "boolean") return String(current).slice(0, 500);
-        return current == null ? "" : "true";
-      };
-      const catalogJs = Object.fromEntries(requiredPaths.map((path) => [path, safePathValue(path)]).filter(([, found]) => found));
-      return {
-        ...globals,
-        js: {
-          ...catalogJs,
-          "$.fn.jquery": globals.jquery,
-          "jQuery.fn.jquery": globals.jquery,
-          "React.version": globals.react,
-          "Vue.version": globals.vue,
-          "angular.version.full": globals.angular,
-          "_.VERSION": globals.lodash,
-          "axios.VERSION": globals.axios,
-          "moment.version": globals.moment,
-          "bootstrap.Tooltip.VERSION": globals.bootstrap,
-          "gsap.version": globals.gsap,
-          "Alpine.version": globals.alpine,
-          "requirejs.version": globals.requirejs
-        }
-      };
-    }
+    func: collectCatalogProperties
   });
-  return result || {};
+  const js = result || {};
+  return {
+    jquery: js["jQuery.fn.jquery"] || js["$.fn.jquery"] || "",
+    select2: js["jQuery.fn.select2"] || js["$.fn.select2"] || "",
+    popper: js["Popper.version"] || js["Popper.Defaults"] || "",
+    fontawesome: js.FontAwesome || "",
+    react: js["React.version"] || "",
+    nextjs: js.__NEXT_DATA__ || "",
+    vue: js["Vue.version"] || "",
+    nuxt: js.__NUXT__ || "",
+    angular: js["angular.version.full"] || "",
+    lodash: js["_.VERSION"] || "",
+    axios: js["axios.VERSION"] || "",
+    moment: js["moment.version"] || "",
+    bootstrap: js["bootstrap.Tooltip.VERSION"] || js["jQuery.fn.tooltip.Constructor.VERSION"] || "",
+    gsap: js["gsap.version"] || "",
+    alpine: js["Alpine.version"] || "",
+    requirejs: js["requirejs.version"] || "",
+    sentry: js["Sentry.SDK_VERSION"] || js.__SENTRY__ || "",
+    js
+  };
 }
 
 async function cachedLookup(technology) {
@@ -251,8 +213,11 @@ async function cachedLookup(technology) {
 }
 
 async function addVulnerabilities(technologies, enabled) {
-  const candidates = technologies.filter((item) => item.version && (item.package || item.cpe)).slice(0, MAX_CVE_LOOKUPS);
-  if (!enabled || !candidates.length) return technologies.map((item) => ({ ...item, vulnerabilityStatus: item.version ? "unsupported" : "version-unknown", vulnerabilities: [] }));
+  if (!enabled) return technologies.map((item) => ({ ...item, vulnerabilityStatus: item.version ? "disabled" : "version-unknown", vulnerabilities: [] }));
+  const eligible = technologies.filter((item) => item.version && (item.package || item.cpe));
+  const candidates = eligible.slice(0, MAX_CVE_LOOKUPS);
+  const candidateIds = new Set(candidates.map((item) => item.id));
+  if (!candidates.length) return technologies.map((item) => ({ ...item, vulnerabilityStatus: item.version ? "unsupported" : "version-unknown", vulnerabilities: [] }));
   const results = new Map();
   for (const technology of candidates) {
     try {
@@ -264,8 +229,22 @@ async function addVulnerabilities(technologies, enabled) {
   }
   return technologies.map((technology) => {
     const result = results.get(technology.id);
-    if (!result) return { ...technology, vulnerabilityStatus: technology.version ? "unsupported" : "version-unknown", vulnerabilities: [] };
-    return { ...technology, vulnerabilityStatus: result.status, vulnerabilitySource: result.source || "", vulnerabilityError: result.error || "", vulnerabilities: result.vulnerabilities || [], cveCached: Boolean(result.cached) };
+    if (!result) {
+      const vulnerabilityStatus = !technology.version ? "version-unknown"
+        : (technology.package || technology.cpe) && !candidateIds.has(technology.id) ? "lookup-limit"
+        : "unsupported";
+      return { ...technology, vulnerabilityStatus, vulnerabilities: [] };
+    }
+    return {
+      ...technology,
+      vulnerabilityStatus: result.status,
+      vulnerabilitySource: result.source || "",
+      vulnerabilityError: result.error || "",
+      vulnerabilityCheckedAt: result.checkedAt || "",
+      vulnerabilityQuery: result.query || null,
+      vulnerabilities: result.vulnerabilities || [],
+      cveCached: Boolean(result.cached)
+    };
   });
 }
 
@@ -350,7 +329,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         data = tab ? { tab: { id: tab.id, title: tab.title, url: tab.url }, result: await getResult(tab.id), settings: await settings() } : null;
       } else if (message.type === "scan") {
         const target = Number.isInteger(tabId) ? tabId : (await activeTab())?.id;
-        data = await scanTab(target, { force: true, checkCves: message.checkCves !== false });
+        const checkCves = message.checkCves !== false;
+        data = await scanTab(target, { force: true, checkCves, deferCves: checkCves });
       } else if (message.type === "getResult") {
         data = await getResult(tabId);
       } else if (message.type === "openReport") {

@@ -80,6 +80,7 @@ export async function lookupTechnologyVulnerabilities(technology, fetchFn = fetc
   if (!technology?.version) return { status: "version-unknown", vulnerabilities: [] };
   const signal = typeof AbortSignal?.timeout === "function" ? AbortSignal.timeout(12_000) : undefined;
   if (technology.package) {
+    const query = { basis: "exact-version", source: "OSV", version: technology.version, ecosystem: technology.package.ecosystem, package: technology.package.name };
     const response = await fetchFn(OSV_API, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -94,17 +95,22 @@ export async function lookupTechnologyVulnerabilities(technology, fetchFn = fetc
     return {
       status: "checked",
       source: "OSV",
+      checkedAt: new Date().toISOString(),
+      query,
       vulnerabilities: uniqueVulnerabilities((payload.vulns || []).map(normalizeOsv))
     };
   }
   if (technology.cpe) {
     const cpeName = technology.cpe.replace("{version}", technology.version);
+    const query = { basis: "exact-version", source: "NVD", version: technology.version, cpe: cpeName };
     const response = await fetchFn(`${NVD_API}?cpeName=${encodeURIComponent(cpeName)}&noRejected`, { headers: { accept: "application/json" }, signal });
     if (!response.ok) throw new Error(`NVD returned HTTP ${response.status}`);
     const payload = await response.json();
     return {
       status: "checked",
       source: "NVD",
+      checkedAt: new Date().toISOString(),
+      query,
       vulnerabilities: uniqueVulnerabilities((payload.vulnerabilities || []).map(normalizeNvd))
     };
   }

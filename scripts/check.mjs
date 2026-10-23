@@ -4,6 +4,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import fingerprints from "@openwapp/fingerprints";
 import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
+import { collectCatalogProperties } from "../shared/safe-properties.js";
 import { TECHNOLOGIES } from "../data/technologies.js";
 import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, OPENWAPP_REQUIREMENTS, openWappTechnologyId } from "../vendor/openwapp-engine.js";
 
@@ -20,7 +21,7 @@ const required = [
   manifest.background.service_worker,
   manifest.action.default_popup,
   ...Object.values(manifest.icons),
-  "data/technologies.js", "shared/detector.js", "shared/vulnerabilities.js",
+  "data/technologies.js", "shared/detector.js", "shared/safe-properties.js", "shared/vulnerabilities.js",
   "popup/popup.css", "popup/popup.js", "report/index.html", "report/report.css", "report/report.js",
   "screenshots/stacksentry-popup.png", "screenshots/stacksentry-report.png",
   "vendor/openwapp-engine.js", "vendor/openwapp-fingerprints-LICENSE.txt", "vendor/openwapp-matcher-LICENSE.txt", "vendor/openwapp-upstream.json",
@@ -39,7 +40,7 @@ assert.ok(OPENWAPP_REQUIREMENTS.domAttribute.length >= 150, "full catalog DOM at
 const catalogIconFiles = new Set(await readdir(new URL("icons/catalog/", root)));
 assert.equal(catalogIconFiles.size, OPENWAPP_CATALOG_SIZE, "catalog icon count does not match catalog size");
 for (const name of Object.keys(fingerprints.technologies)) assert.ok(catalogIconFiles.has(`${openWappTechnologyId(name)}.svg`), `${name} catalog icon is missing`);
-for (const path of ["background/service-worker.js", "data/technologies.js", "shared/detector.js", "shared/vulnerabilities.js", "popup/popup.js", "report/report.js"]) {
+for (const path of ["background/service-worker.js", "data/technologies.js", "shared/detector.js", "shared/safe-properties.js", "shared/vulnerabilities.js", "popup/popup.js", "report/report.js"]) {
   execFileSync(process.execPath, ["--check", new URL(path, root).pathname], { stdio: "pipe" });
 }
 for (const technology of TECHNOLOGIES) {
@@ -166,6 +167,16 @@ const deepNegatives = analyzeOpenWappEvidence({
   js: { "LA.config": ["true"] }
 });
 assert.equal(deepNegatives.some((item) => ["30namaPlayer", "Bump", "Bootstrap Icons", "51.LA"].includes(item.name)), false, "nearby deep-signal fixture created a false positive");
+let getterInvoked = false;
+let callableInvoked = false;
+const safeRoot = { Namespace: { version: "4.2.1" }, callable: Object.assign(() => { callableInvoked = true; }, { version: "8.1.0" }) };
+Object.defineProperty(safeRoot, "danger", { get() { getterInvoked = true; throw new Error("getter must not run"); } });
+const safeProperties = collectCatalogProperties(["Namespace.version", "callable", "callable.version", "danger.value"], safeRoot);
+assert.equal(safeProperties["Namespace.version"], "4.2.1");
+assert.equal(safeProperties.callable, "true");
+assert.equal(safeProperties["callable.version"], "8.1.0");
+assert.equal(getterInvoked, false, "catalog property collection invoked a getter");
+assert.equal(callableInvoked, false, "catalog property collection invoked a function");
 const combined = mergeTechnologyDetections(findings, broadCatalog);
 assert.equal(combined.filter((item) => item.name === "jQuery").length, 1, "core and maintained catalog produced duplicate jQuery rows");
 assert.equal(combined.find((item) => item.name === "jQuery").source, "Core + OpenWapp");
@@ -186,6 +197,8 @@ assert.equal(osvRequest.body.version, "3.4.1");
 assert.equal(osvRequest.body.package.ecosystem, "npm");
 assert.equal(osvResult.vulnerabilities[0].id, "CVE-2099-0001");
 assert.equal(osvResult.vulnerabilities[0].severity, "high");
+assert.deepEqual(osvResult.query, { basis: "exact-version", source: "OSV", version: "3.4.1", ecosystem: "npm", package: "jquery" });
+assert.ok(!Number.isNaN(Date.parse(osvResult.checkedAt)));
 assert.equal(vulnerabilityCacheKey({ version: "3.4.1", package: { ecosystem: "npm", name: "jquery" } }), "osv:npm:jquery:3.4.1");
 const osvEmpty = await lookupTechnologyVulnerabilities({ id: "synthetic", version: "1.0.0", package: { ecosystem: "npm", name: "synthetic-safe-package" } }, async () => ({ ok: true, json: async () => ({ vulns: [] }) }));
 assert.equal(osvEmpty.status, "checked");
@@ -205,6 +218,8 @@ const nvdResult = await lookupTechnologyVulnerabilities({ id: "nginx", version: 
 assert.ok(decodeURIComponent(nvdUrl).includes("nginx:1.24.0"));
 assert.equal(nvdResult.vulnerabilities[0].severity, "critical");
 assert.equal(nvdResult.vulnerabilities[0].score, 9.8);
+assert.equal(nvdResult.query.basis, "exact-version");
+assert.equal(nvdResult.query.cpe, "cpe:2.3:a:nginx:nginx:1.24.0:*:*:*:*:*:*:*");
 assert.equal((await lookupTechnologyVulnerabilities({ id: "react", version: "", package: { ecosystem: "npm", name: "react" } }, () => { throw new Error("must not fetch"); })).status, "version-unknown");
 assert.equal((await lookupTechnologyVulnerabilities({ id: "unknown", version: "1.2.3" }, () => { throw new Error("must not fetch"); })).status, "unsupported");
 await assert.rejects(() => lookupTechnologyVulnerabilities({ id: "jquery", version: "3.4.1", package: { ecosystem: "npm", name: "jquery" } }, async () => ({ ok: false, status: 503 })), /OSV returned HTTP 503/);
@@ -261,7 +276,15 @@ await message({ type: "updateSettings", settings: { enabled: true, autoScan: tru
 response = await message({ type: "scan", tabId: 7, checkCves: false });
 assert.equal(response.ok, true, response.error);
 assert.equal(response.data.technologies.some((item) => item.id === "jquery"), true);
+assert.equal(response.data.technologies.find((item) => item.id === "jquery").vulnerabilityStatus, "disabled");
 assert.equal(response.data.summary.vulnerabilities.total, 0);
+
+const updatedPopupSource = await readFile(new URL("popup/popup.js", root), "utf8");
+const reportSource = await readFile(new URL("report/report.js", root), "utf8");
+for (const status of ["checked", "pending", "version-unknown", "disabled", "lookup-limit", "unsupported", "error"]) assert.ok(updatedPopupSource.includes(status), `popup is missing the ${status} CVE state`);
+assert.ok(updatedPopupSource.includes("chrome.storage.onChanged"), "popup does not receive completed asynchronous CVE results");
+assert.ok(reportSource.includes("Exact version match"), "report does not explain exact-version CVE attribution");
+assert.ok(reportSource.includes("chrome.storage.onChanged"), "report does not receive completed asynchronous CVE results");
 
 console.log(`✓ Manifest v${manifest.version} and ${new Set(required).size} required assets`);
 console.log(`✓ ${findings.length} technology detections across header, meta, DOM, script, and global evidence`);
@@ -269,7 +292,9 @@ console.log(`✓ ${TECHNOLOGIES.length} technology definitions have valid matche
 console.log(`✓ ${OPENWAPP_CATALOG_SIZE} maintained catalog fingerprints and local icons`);
 console.log(`✓ ${OPENWAPP_REQUIREMENTS.js.length} safe JavaScript paths and ${OPENWAPP_REQUIREMENTS.domExists.length} DOM selectors wired into collection`);
 console.log("✓ Positive and nearby-negative fingerprint fixtures");
+console.log("✓ Descriptor-safe version collection without invoking getters or functions");
 console.log("✓ Full popup technology list without result truncation");
 console.log("✓ Core/catalog deduplication with catalog evidence and version extraction");
 console.log("✓ OSV/NVD exact-version hits, empty results, deduplication, no-version skip, and HTTP failure handling");
+console.log("✓ Distinct CVE states, exact-query provenance, and live asynchronous result rendering");
 console.log("✓ Master switch, scan message, storage, and listener smoke tests");

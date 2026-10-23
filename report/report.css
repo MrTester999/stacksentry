@@ -20,6 +20,8 @@ main { min-width:0; }.topbar { display:flex; align-items:center; min-height:80px
 @media(max-width:1100px){.app-shell{grid-template-columns:210px minmax(0,1fr)}.content-grid{grid-template-columns:1fr}.risk-column{padding:14px 0 0;border-top:1px solid #172537;border-left:0}.overview{align-items:stretch;flex-direction:column}.metrics{grid-template-columns:repeat(4,1fr)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+.verification-note code,.verification-note small{display:block;margin-top:6px;padding-top:5px;border-top:1px solid #1d3044;color:#73bdb4;font:7px/1.45 "Cascadia Code",monospace;overflow-wrap:anywhere}.verification-note small{margin-top:2px;padding-top:0;border:0;color:#61768d}.cve-pill.checked{border-color:#39e2ca3f;color:#73bdb4}.vulnerability-card h4{line-height:1.4}.match-basis{margin:6px 0;padding:6px 7px;border:1px solid #2b4558;border-radius:6px;background:#0e1c29;color:#78c6ba;font:700 6.7px/1.4 "Cascadia Code",monospace}
+
 /* v2 clarity pass */
 body{font-size:13px}
 .sidebar{width:auto;padding:22px 17px}.brand h1{font-size:18px}.brand p{font-size:8px}

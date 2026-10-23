@@ -44,7 +44,29 @@ function filteredTechnologies() {
     if (!search) return true;
     const haystack = [technology.name, technology.category, technology.version, technology.source, ...(technology.evidence || []).flatMap((item) => [item.type, item.detail]), ...(technology.vulnerabilities || []).flatMap((item) => [item.id, item.summary])].join(" ").toLowerCase();
     return haystack.includes(search);
-  });
+  }).sort((a, b) => Number(Boolean(b.vulnerabilities?.length)) - Number(Boolean(a.vulnerabilities?.length)) || Number(Boolean(b.version)) - Number(Boolean(a.version)) || a.name.localeCompare(b.name));
+}
+
+function vulnerabilityStatusLabel(technology) {
+  const count = technology.vulnerabilities?.length || 0;
+  if (count) return `${count} exact-match CVE${count === 1 ? "" : "s"}`;
+  return {
+    checked: "0 CVEs returned",
+    pending: "Exact lookup pending",
+    "version-unknown": "Version unknown",
+    disabled: "CVE check disabled",
+    "lookup-limit": "Not checked · scan limit",
+    unsupported: "No verified mapping",
+    error: "Lookup failed"
+  }[technology.vulnerabilityStatus] || "Not checked";
+}
+
+function queryDescription(technology) {
+  const query = technology.vulnerabilityQuery;
+  if (!query) return "";
+  if (query.package) return `${query.source} exact package query · ${query.ecosystem}:${query.package}@${query.version}`;
+  if (query.cpe) return `${query.source} exact CPE query · ${query.cpe}`;
+  return `${query.source} exact-version query · ${query.version}`;
 }
 
 function renderCategories() {
@@ -91,7 +113,7 @@ function renderTechnologies() {
     const confidence = document.createElement("div");
     confidence.className = "confidence";
     confidence.append(textNode("strong", `${technology.score}%`, technology.confidence), textNode("span", `${technology.confidence} confidence`));
-    const cve = textNode("span", technology.vulnerabilities?.length ? `${technology.vulnerabilities.length} CVE${technology.vulnerabilities.length === 1 ? "" : "s"}` : technology.vulnerabilityStatus === "checked" ? "No CVEs returned" : "Not verified", `cve-pill${technology.vulnerabilities?.length ? " risk" : ""}`);
+    const cve = textNode("span", vulnerabilityStatusLabel(technology), `cve-pill${technology.vulnerabilities?.length ? " risk" : technology.vulnerabilityStatus === "checked" ? " checked" : ""}`);
     button.append(icon, name, version, confidence, cve, textNode("b", "›"));
     const details = document.createElement("div");
     details.className = "technology-details";
@@ -111,10 +133,17 @@ function renderTechnologies() {
     note.className = "verification-note";
     const statusText = !technology.version ? "Version unknown — CVE matching skipped to avoid false attribution."
       : technology.vulnerabilityStatus === "pending" ? "Exact-version CVE lookup is still running in the background."
-      : technology.vulnerabilityStatus === "checked" ? `${technology.vulnerabilitySource} checked the exact detected version.${technology.cveCached ? " Result loaded from the 24-hour local cache." : ""}`
+      : technology.vulnerabilityStatus === "checked" ? `${technology.vulnerabilitySource} returned ${technology.vulnerabilities?.length || 0} CVE record${technology.vulnerabilities?.length === 1 ? "" : "s"} for the exact detected version.${technology.cveCached ? " Result loaded from the 24-hour local cache." : ""}`
+      : technology.vulnerabilityStatus === "disabled" ? "CVE checks were disabled for this scan. No vulnerability conclusion was made."
+      : technology.vulnerabilityStatus === "lookup-limit" ? "This mapped version was not queried because the per-scan lookup limit was reached."
       : technology.vulnerabilityStatus === "error" ? `Lookup failed: ${technology.vulnerabilityError}`
       : "No supported package or verified CPE mapping is available for this technology.";
     note.append(textNode("strong", technology.version ? `Version ${technology.version}` : "Version not confirmed"), document.createTextNode(statusText));
+    const queryText = queryDescription(technology);
+    if (queryText) {
+      note.append(textNode("code", queryText));
+      if (technology.vulnerabilityCheckedAt) note.append(textNode("small", `Checked ${new Date(technology.vulnerabilityCheckedAt).toLocaleString()}`));
+    }
     verification.append(note);
     grid.append(evidence, verification);
     details.append(grid);
@@ -124,10 +153,10 @@ function renderTechnologies() {
 }
 
 function renderVulnerabilities() {
-  const vulnerabilities = (result?.technologies || []).flatMap((technology) => (technology.vulnerabilities || []).map((item) => ({ ...item, technology: technology.name, version: technology.version })));
+  const vulnerabilities = (result?.technologies || []).flatMap((technology) => (technology.vulnerabilities || []).map((item) => ({ ...item, technology: technology.name, version: technology.version, query: technology.vulnerabilityQuery, checkedAt: technology.vulnerabilityCheckedAt })));
   elements.vulnerabilityList.replaceChildren();
   if (!vulnerabilities.length) {
-    elements.vulnerabilityList.append(emptyState("No known CVEs matched", "Only exact detected versions are checked. Unknown versions are never guessed."));
+    elements.vulnerabilityList.append(emptyState("No CVEs returned", "Only mapped technologies with exact detected versions are queried. Review each technology's check status for skipped or unsupported results."));
     return;
   }
   for (const vulnerability of vulnerabilities) {
@@ -141,7 +170,8 @@ function renderVulnerabilities() {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = `Open ${vulnerability.source} advisory ↗`;
-    card.append(head, textNode("h4", `${vulnerability.technology} ${vulnerability.version}`), textNode("p", vulnerability.summary), link);
+    const match = textNode("div", `Exact version match · ${vulnerability.technology} ${vulnerability.version} · ${vulnerability.query?.source || vulnerability.source}`, "match-basis");
+    card.append(head, textNode("h4", vulnerability.summary), match, textNode("p", "The advisory source returned this CVE for the exact mapped version. Confirm the affected component and reachable code path before reporting."), link);
     elements.vulnerabilityList.append(card);
   }
 }
@@ -217,3 +247,11 @@ void (async () => {
     notify(error.message, true);
   }
 })();
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "session") return;
+  const updated = changes[`scanResult:${tabId}`]?.newValue;
+  if (!updated) return;
+  result = updated;
+  render();
+});

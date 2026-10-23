@@ -33,7 +33,8 @@ versions against OSV.dev or the NIST NVD.
 - **Open full intelligence report:** opens the evidence and advisory workspace.
 
 The popup itself also displays every detected technology, grouped by category.
-The list scrolls inside the popup so large stacks are not truncated.
+Each row includes confidence, a confirmed version when observable, exact CVE
+status, and matched CVE IDs. The list scrolls so large stacks are not truncated.
 
 ## Detection confidence
 
@@ -52,10 +53,15 @@ Multiple independent indicators increase the final confidence score.
   available, so no CVE claim was made.
 - **Unsupported:** the technology lacks a reviewed package or CPE mapping.
 - **Error:** the configured public service was temporarily unavailable.
+- **Check disabled:** CVE enrichment was disabled for this scan.
+- **Lookup limit:** a supported exact version was detected but was outside the
+  bounded per-scan query set, so no vulnerability conclusion was made.
 
 An empty checked result means no advisory was returned for that exact mapping at
 the time of the query. It is not a guarantee that the product is vulnerability-free.
 Duplicate advisory records that resolve to the same CVE ID are counted once.
+Completed checks record the exact OSV package tuple or versioned NVD CPE and the
+query time. Popup and report views update when asynchronous checks finish.
 
 ## Data handling
 
@@ -79,7 +85,7 @@ headers. Always inspect the evidence and validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-2.1.0.zip`.
+1. Extract `dist/stacksentry-2.2.0.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.
