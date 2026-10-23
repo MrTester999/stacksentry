@@ -34,13 +34,40 @@ are never guessed and are never labeled vulnerable.
 > that a vulnerability is reachable or exploitable. Validate the finding in the
 > target's authorized testing scope.
 
+## Verified live test: SecOne4All
+
+StackSentry v2.3.1 was loaded as an unpacked extension in Chromium and tested
+against the public homepage at [`https://secone4all.com/`](https://secone4all.com/)
+on **October 23, 2026**. The settled two-pass scan completed with HTTP 200 and
+reported five high-confidence technologies:
+
+| Technology | Category | Confidence | Version / CVE decision |
+|---|---|---:|---|
+| Cloudflare | CDN | 100% | Version not exposed; CVE lookup skipped |
+| Cloudflare Browser Insights | RUM | 100% | Version not exposed; CVE lookup skipped |
+| HSTS | Security | 100% | Protocol/security signal; no package CVE lookup |
+| HTTP/3 | Miscellaneous | 100% | Protocol signal; no package CVE lookup |
+| LiteSpeed | Web server | 100% | Version not exposed; CVE lookup skipped |
+
+![SecOne4All public homepage used for the live test](screenshots/secone4all-site.png)
+
+![StackSentry live report for SecOne4All](screenshots/secone4all-live-report.png)
+
+The captured [sanitized result](screenshots/secone4all-live-result.json) contains
+technology names, confidence, version state, and CVE status only. Results describe
+the observed route at capture time; deployments and exposed fingerprints can change.
+
 ## Screenshots
 
-### Automatic technology and CVE summary
+The following product screenshots use deterministic synthetic fixtures so every
+UI state—including exact-version CVE matches—can be reviewed without publishing
+real vulnerability claims.
+
+### Automatic technology and CVE summary (synthetic fixture)
 
 ![StackSentry popup](screenshots/stacksentry-popup.png)
 
-### Full evidence-backed intelligence report
+### Full evidence-backed intelligence report (synthetic fixture)
 
 ![StackSentry report](screenshots/stacksentry-report.png)
 
@@ -156,7 +183,9 @@ StackSentry never blocks, redirects, or modifies network requests.
 
 - Page fingerprinting runs inside the browser.
 - Page HTML is sampled in memory and is not persisted in reports.
-- Cookies and `Set-Cookie` headers are intentionally not collected.
+- Catalog-requested page-readable cookies are matched transiently in memory;
+  values are never stored, displayed, or sent remotely. `Set-Cookie` headers and
+  HTTP-only cookies are not collected.
 - Only exact product/package names and versions are sent to OSV or NVD.
 - CVE results are cached locally for 24 hours.
 - No analytics, telemetry, account, or remote StackSentry service is used.

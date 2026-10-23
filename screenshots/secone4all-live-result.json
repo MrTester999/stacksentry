@@ -1,0 +1,82 @@
+{
+  "capturedAt": "2026-10-23T16:29:29.079Z",
+  "site": "https://secone4all.com/",
+  "title": "SecOne4All | Learn. Hunt. Secure.",
+  "statusCode": 200,
+  "collectionPasses": 2,
+  "catalogSize": 7628,
+  "summary": {
+    "technologies": {
+      "categories": {
+        "CDN": 1,
+        "Miscellaneous": 1,
+        "RUM": 1,
+        "Security": 1,
+        "Web server": 1
+      },
+      "total": 5,
+      "versioned": 0
+    },
+    "vulnerabilities": {
+      "affectedTechnologies": 0,
+      "critical": 0,
+      "high": 0,
+      "low": 0,
+      "medium": 0,
+      "total": 0,
+      "unknown": 0
+    }
+  },
+  "technologies": [
+    {
+      "name": "Cloudflare",
+      "category": "CDN",
+      "version": null,
+      "confidence": "high",
+      "score": 100,
+      "source": "Core + OpenWapp",
+      "vulnerabilityStatus": "version-unknown",
+      "cves": []
+    },
+    {
+      "name": "Cloudflare Browser Insights",
+      "category": "RUM",
+      "version": null,
+      "confidence": "high",
+      "score": 100,
+      "source": "Core + OpenWapp",
+      "vulnerabilityStatus": "version-unknown",
+      "cves": []
+    },
+    {
+      "name": "HSTS",
+      "category": "Security",
+      "version": null,
+      "confidence": "high",
+      "score": 100,
+      "source": "OpenWapp",
+      "vulnerabilityStatus": "version-unknown",
+      "cves": []
+    },
+    {
+      "name": "HTTP/3",
+      "category": "Miscellaneous",
+      "version": null,
+      "confidence": "high",
+      "score": 100,
+      "source": "Core + OpenWapp",
+      "vulnerabilityStatus": "version-unknown",
+      "cves": []
+    },
+    {
+      "name": "LiteSpeed",
+      "category": "Web server",
+      "version": null,
+      "confidence": "high",
+      "score": 100,
+      "source": "Core + OpenWapp",
+      "vulnerabilityStatus": "version-unknown",
+      "cves": []
+    }
+  ]
+}
