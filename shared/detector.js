@@ -40,6 +40,11 @@ export function analyzeEvidence(evidence, technologies = TECHNOLOGIES) {
   const headers = Object.fromEntries(Object.entries(evidence.headers || {}).map(([key, value]) => [key.toLowerCase(), String(value)]));
   const html = String(evidence.html || "");
   const scripts = (evidence.scripts || []).map((item) => typeof item === "string" ? item : item.src || "").filter(Boolean);
+  const assets = [
+    ...scripts,
+    ...(evidence.links || []).map((item) => typeof item === "string" ? item : item.href || ""),
+    ...(evidence.resources || []).map((item) => typeof item === "string" ? item : item.name || "")
+  ].filter(Boolean);
   const metas = evidence.meta || [];
   const globals = evidence.globals || {};
   const output = [];
@@ -71,11 +76,19 @@ export function analyzeEvidence(evidence, technologies = TECHNOLOGIES) {
         if (result) pushEvidence(bucket, "script", script, result.match, result.version ? "high" : "medium", result.version);
       }
     }
+    for (const tuple of technology.matchers?.assets || []) {
+      for (const asset of assets) {
+        const result = testPattern(asset, tuple);
+        if (result) pushEvidence(bucket, "asset", asset, result.match, result.version ? "high" : "medium", result.version);
+      }
+    }
     for (const tuple of technology.matchers?.html || []) {
       const result = testPattern(html, tuple);
       if (result) pushEvidence(bucket, "dom", "page", result.match, "medium", result.version);
     }
     if (!bucket.evidence.length) continue;
+    const versionMajor = bucket.version.split(".")[0];
+    const mappedPackage = technology.packages?.[versionMajor] || technology.package || null;
     output.push({
       id: technology.id,
       name: technology.name,
@@ -87,7 +100,7 @@ export function analyzeEvidence(evidence, technologies = TECHNOLOGIES) {
       version: bucket.version,
       versionConfidence: bucket.versionConfidence,
       evidence: bucket.evidence,
-      package: technology.package || null,
+      package: mappedPackage,
       cpe: technology.cpe || ""
     });
   }

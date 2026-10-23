@@ -2,3 +2,4 @@ node_modules/
 *.log
 dist/*.zip
 !dist/stacksentry-1.0.0.zip
+!dist/stacksentry-1.1.0.zip

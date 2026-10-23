@@ -106,6 +106,10 @@ async function collectDomEvidence(tabId) {
         htmlTruncated: html.length > MAX_HTML,
         scripts: [...document.scripts].slice(0, 600).map((script) => ({ src: script.src || "", type: script.type || "" })),
         links: [...document.querySelectorAll("link[href]")].slice(0, 600).map((link) => ({ href: link.href, rel: link.rel || "" })),
+        resources: performance.getEntriesByType("resource").slice(0, 1200).map((entry) => ({
+          name: entry.name || "",
+          initiatorType: entry.initiatorType || ""
+        })),
         meta: [...document.querySelectorAll("meta")].slice(0, 250).map((meta) => ({
           name: meta.name || "",
           property: meta.getAttribute("property") || "",
@@ -131,6 +135,9 @@ async function collectGlobalEvidence(tabId) {
       };
       return {
         jquery: value(() => window.jQuery?.fn?.jquery),
+        select2: value(() => window.jQuery?.fn?.select2),
+        popper: value(() => window.Popper?.version || window.Popper?.Defaults),
+        fontawesome: value(() => window.FontAwesome || document.querySelector("style[data-fa-i2svg], link[href*='font-awesome'], link[href*='fontawesome']")),
         react: value(() => window.React?.version || document.querySelector("[data-reactroot]")),
         nextjs: value(() => window.__NEXT_DATA__),
         vue: value(() => window.Vue?.version || document.querySelector("[data-v-app]")),
@@ -139,7 +146,7 @@ async function collectGlobalEvidence(tabId) {
         lodash: value(() => window._?.VERSION),
         axios: value(() => window.axios?.VERSION),
         moment: value(() => window.moment?.version),
-        bootstrap: value(() => window.bootstrap?.Tooltip?.VERSION),
+        bootstrap: value(() => window.bootstrap?.Tooltip?.VERSION || window.jQuery?.fn?.tooltip?.Constructor?.VERSION),
         gsap: value(() => window.gsap?.version),
         alpine: value(() => window.Alpine?.version),
         requirejs: value(() => window.requirejs?.version),

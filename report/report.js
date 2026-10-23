@@ -19,10 +19,6 @@ function notify(message, error = false) {
   toastTimer = setTimeout(() => elements.toast.classList.remove("show"), 2600);
 }
 
-function initials(name) {
-  return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-}
-
 function textNode(tag, text, className = "") {
   const element = document.createElement(tag);
   element.textContent = text;
@@ -80,7 +76,12 @@ function renderTechnologies() {
     button.type = "button";
     button.className = "technology-main";
     button.style.setProperty("--tech", technology.color || "#39e2ca");
-    const icon = textNode("span", initials(technology.name), "tech-icon");
+    const icon = document.createElement("span");
+    icon.className = "tech-icon";
+    const iconImage = document.createElement("img");
+    iconImage.src = `../icons/technologies/${technology.id}.svg`;
+    iconImage.alt = "";
+    icon.append(iconImage);
     const name = document.createElement("div");
     name.className = "tech-name";
     name.append(textNode("strong", technology.name), textNode("span", technology.category));

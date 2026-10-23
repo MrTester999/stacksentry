@@ -6,7 +6,7 @@
 
   **Automatic web-stack fingerprinting with evidence, exact versions, and version-aware CVE intelligence.**
 
-  [![Version](https://img.shields.io/badge/version-1.0.0-39cdb9?style=flat-square)](manifest.json)
+  [![Version](https://img.shields.io/badge/version-1.1.0-39cdb9?style=flat-square)](manifest.json)
   [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](manifest.json)
   [![Data](https://img.shields.io/badge/CVE%20data-OSV%20%2B%20NVD-5d84ff?style=flat-square)](#version-aware-vulnerability-intelligence)
   [![Privacy](https://img.shields.io/badge/page%20fingerprinting-local-29b99e?style=flat-square)](#privacy)
@@ -47,8 +47,10 @@ are never guessed and are never labeled vulnerable.
 - **Automatic scanning:** analyzes every normal website after navigation.
 - **Master On/Off:** stops both automatic and manual analysis and clears badges.
 - **Site exclusions:** pauses Auto Scan for selected hostnames and subdomains.
-- **Five evidence layers:** headers, metadata, DOM markers, asset URLs, and
-  runtime globals.
+- **Six evidence layers:** headers, metadata, DOM markers, script/stylesheet
+  URLs, dynamically loaded resource URLs, and runtime globals.
+- **Technology icons:** every detected product has a bundled local brand or
+  category icon; no remote icon requests are made.
 - **Version extraction:** records the version only when a fingerprint exposes it.
 - **Evidence and confidence:** every detection shows why it matched.
 - **Live CVE intelligence:** queries exact package versions through OSV and
@@ -67,12 +69,12 @@ The initial catalog covers common technologies across:
 - Frontend frameworks: React, Next.js, Vue, Nuxt, Angular, Svelte, Astro, and
   Alpine.js.
 - JavaScript libraries: jQuery, Bootstrap, Lodash, Axios, Moment.js, GSAP,
-  RequireJS, and Sentry.
+  RequireJS, Select2, Popper, Font Awesome, and Sentry.
 - Backends: PHP, ASP.NET, Express, Laravel, Django, and Ruby on Rails.
 - Servers and infrastructure: nginx, Apache HTTP Server, IIS, Cloudflare,
-  Akamai, Fastly, Vercel, and Netlify.
+  LiteSpeed, HTTP/3, Akamai, Fastly, Vercel, and Netlify.
 - Analytics and APIs: Google Analytics, Google Tag Manager, Meta Pixel, Hotjar,
-  and GraphQL.
+  Cloudflare Browser Insights, and GraphQL.
 
 The rule catalog is deliberately extensible in [`data/technologies.js`](data/technologies.js).
 
@@ -93,7 +95,7 @@ of performing a broad product-name lookup.
 
 ## Installation
 
-1. Download and extract [`stacksentry-1.0.0.zip`](dist/stacksentry-1.0.0.zip).
+1. Download and extract [`stacksentry-1.1.0.zip`](dist/stacksentry-1.1.0.zip).
 2. Open `chrome://extensions`.
 3. Enable **Developer mode**.
 4. Select **Load unpacked**.
@@ -170,11 +172,11 @@ switch, storage, and Chrome event registration.
 - [Detailed documentation](DOCUMENTATION.md)
 - [Plain-text guide](DOCUMENTATION.txt)
 - [Changelog](CHANGELOG.md)
-- [Release ZIP](dist/stacksentry-1.0.0.zip)
+- [Release ZIP](dist/stacksentry-1.1.0.zip)
 
 ---
 
 <div align="center">
-  <strong>StackSentry v1.0.0</strong><br>
+  <strong>StackSentry v1.1.0</strong><br>
   Evidence first. Exact versions. Honest vulnerability intelligence.
 </div>

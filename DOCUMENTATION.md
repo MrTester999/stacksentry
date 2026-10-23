@@ -12,7 +12,8 @@ versions against OSV.dev or the NIST NVD.
 2. StackSentry checks the master switch, Auto Scan setting, and hostname
    exclusion list.
 3. The extension collects a bounded local fingerprint from metadata, DOM
-   markers, asset URLs, selected globals, and response headers.
+   markers, script and stylesheet URLs, dynamically loaded resource URLs,
+   selected globals, and response headers.
 4. The local detector evaluates every technology rule and records evidence,
    confidence, and any explicit version.
 5. Exact supported versions are checked against the appropriate vulnerability
@@ -69,7 +70,7 @@ headers. Always inspect the evidence and validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-1.0.0.zip`.
+1. Extract `dist/stacksentry-1.1.0.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.

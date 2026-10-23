@@ -24,6 +24,10 @@ const required = [
   "README.md", "DOCUMENTATION.md", "DOCUMENTATION.txt", "CHANGELOG.md"
 ];
 for (const path of new Set(required)) assert.ok((await stat(new URL(path, root))).size > 0, `${path} is empty`);
+for (const technology of TECHNOLOGIES) {
+  assert.ok((await stat(new URL(`icons/technologies/${technology.id}.svg`, root))).size > 0, `${technology.id} icon is missing`);
+}
+assert.ok((await stat(new URL("vendor/simple-icons-LICENSE.txt", root))).size > 0, "Simple Icons license is missing");
 for (const path of ["background/service-worker.js", "data/technologies.js", "shared/detector.js", "shared/vulnerabilities.js", "popup/popup.js", "report/report.js"]) {
   execFileSync(process.execPath, ["--check", new URL(path, root).pathname], { stdio: "pipe" });
 }
@@ -75,6 +79,52 @@ const negatives = analyzeEvidence({
   globals: {}
 });
 assert.equal(negatives.some((item) => ["wordpress", "react", "nginx", "drupal", "jquery"].includes(item.id)), false, "nearby plain text created a false positive");
+
+const expandedEvidence = {
+  headers: {
+    server: "cloudflare",
+    "cf-ray": "synthetic-edge-id",
+    "x-turbo-charged-by": "LiteSpeed",
+    "alt-svc": 'h3=":443"; ma=86400'
+  },
+  scripts: [
+    { src: "https://static.cloudflareinsights.com/beacon.min.js/v-synthetic" },
+    { src: "https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" },
+    { src: "https://cdn.example.test/moment.js/2.29.4/moment.min.js" },
+    { src: "https://cdn.example.test/popper.js/1.16.1/umd/popper.min.js" }
+  ],
+  links: [
+    { href: "https://cdn.example.test/font-awesome/4.7.0/css/font-awesome.min.css" },
+    { href: "https://cdn.example.test/select2/4.0.13/css/select2.min.css" },
+    { href: "https://cdn.example.test/bootstrap/4.3.1/css/bootstrap.min.css" }
+  ],
+  resources: [{ name: "https://static.cloudflareinsights.com/beacon.min.js/v-synthetic" }],
+  html: `<script data-cf-beacon='{"token":"synthetic"}'></script>`,
+  globals: {}
+};
+const expanded = Object.fromEntries(analyzeEvidence(expandedEvidence).map((item) => [item.id, item]));
+for (const id of ["cloudflare", "litespeed", "http3", "cloudflare-browser-insights", "font-awesome", "popper", "select2", "moment", "jquery", "bootstrap"]) {
+  assert.ok(expanded[id], `${id} expanded fingerprint was not detected`);
+}
+assert.equal(expanded["font-awesome"].version, "4.7.0");
+assert.equal(expanded.popper.version, "1.16.1");
+assert.equal(expanded.select2.version, "4.0.13");
+assert.equal(expanded.moment.version, "2.29.4");
+assert.equal(expanded.jquery.version, "3.5.1");
+assert.equal(expanded.bootstrap.version, "4.3.1");
+assert.equal(expanded.popper.package.name, "popper.js");
+assert.equal(expanded["font-awesome"].package.name, "font-awesome");
+assert.ok(expanded["cloudflare-browser-insights"].evidence.some((item) => item.type === "asset"));
+
+const expandedNegatives = analyzeEvidence({
+  headers: { "x-turbo-charged-by": "Turbo", "alt-svc": 'h2=":443"' },
+  scripts: [{ src: "https://example.test/popper-documentation.js" }],
+  links: [{ href: "https://example.test/fonts.css" }, { href: "https://example.test/select2-guide.html" }],
+  resources: [{ name: "https://example.test/cloudflare-insights-review.txt" }],
+  html: `<meta name="csrf-token" content="generic-framework-token"><p>Font Awesome, LiteSpeed, HTTP/3, Select2 and Popper are discussed here.</p>`,
+  globals: {}
+});
+assert.equal(expandedNegatives.some((item) => ["laravel", "litespeed", "http3", "cloudflare-browser-insights", "font-awesome", "popper", "select2"].includes(item.id)), false, "expanded nearby-negative fixture created a false positive");
 
 const summary = summarizeTechnologies(findings);
 assert.equal(summary.total, findings.length);

@@ -53,7 +53,10 @@ function render() {
     for (const technology of result.technologies.slice(0, 5)) {
       const pill = document.createElement("span");
       pill.className = "technology-pill";
-      pill.textContent = technology.name;
+      const icon = document.createElement("img");
+      icon.src = `../icons/technologies/${technology.id}.svg`;
+      icon.alt = "";
+      pill.append(icon, document.createTextNode(technology.name));
       if (technology.version) {
         const version = document.createElement("b");
         version.textContent = ` ${technology.version}`;
