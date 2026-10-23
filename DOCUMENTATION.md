@@ -87,7 +87,7 @@ headers. Always inspect the evidence and validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-2.2.1.zip`.
+1. Extract `dist/stacksentry-2.2.2.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.

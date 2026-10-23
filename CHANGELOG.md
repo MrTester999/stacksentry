@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.2
+
+- Increased popup and report typography to readable interface sizes, with
+  stronger contrast for secondary labels, evidence, versions, and CVE states.
+- Widened technology rows and increased spacing so names, versions, confidence,
+  and vulnerability status remain visually distinct.
+- Improved controls, summary cards, navigation, and responsive report layout
+  while preserving the complete technology inventory.
+
 ## 2.2.1
 
 - Added a strict exact-version gate before OSV or NVD enrichment. Major-only,

@@ -36,3 +36,20 @@ body{font-size:13px}
 .tech-name strong{font-size:12px}.tech-name span{font-size:8.5px}.tech-name em{display:block;margin-top:2px;color:#4f6b7e;font-size:7px;font-style:normal;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .version strong,.confidence strong{font-size:9.5px}.version span,.confidence span{font-size:7px}.cve-pill{font-size:7.5px}
 .evidence-item b,.verification-note{font-size:8px}.evidence-item span{font-size:8px}
+
+/* v2.2.2 readability pass */
+:root{--muted:#a7b5c7;--line:#2a3b50}
+body{font:14px/1.55 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.004em}
+.app-shell{grid-template-columns:275px minmax(0,1fr)}
+.sidebar{padding:24px 19px 17px}.brand{gap:12px}.brand img{width:48px;height:48px}.brand h1{font-size:20px}.brand p{color:#9aabc0;font-size:9px}.brand>span{padding:5px 8px;font-size:8px}
+.privacy{gap:10px;padding:13px}.privacy strong{font-size:12px}.privacy small{color:#9db0ad;font-size:10px;line-height:1.55}.catalog-stat{padding:12px}.catalog-stat strong{font-size:12px}.catalog-stat span{color:#93a4b9;font-size:9.5px}
+#categoryNav{gap:5px}#categoryNav button{padding:10px 11px;color:#a7b5c7;font-size:11px}#categoryNav button b{font-size:9px}.sidebar-foot{font-size:9px}.sidebar-foot small{color:#8494a8}
+.topbar{min-height:92px;padding:17px 28px}.site-heading{gap:13px}.site-heading>span{width:44px;height:44px}.site-heading small{color:#91a4bb;font-size:9px}.site-heading h2{font-size:19px}.site-heading p{color:#a1b0c2;font-size:11px}.actions button,.toolbar button{padding:10px 13px;font-size:10.5px}
+.overview{gap:28px;margin:23px 28px 16px;padding:21px}.overview-copy>span,.section-head small{font-size:9px}.overview-copy h3,.section-head h3{font-size:19px}.overview-copy p{color:#9eacbe;font-size:11px}.metrics{gap:10px}.metrics article{padding:13px}.metrics small{color:#91a3b9;font-size:8.5px}.metrics strong{font-size:24px}.metrics span{color:#93a4b9;font-size:9.5px}
+.toolbar{gap:10px;margin:0 28px 16px}.search{padding:0 13px}.search input{padding:11px 0;font-size:11px}.toolbar select{padding:0 12px;font-size:10.5px}
+.content-grid{grid-template-columns:minmax(560px,1fr) minmax(370px,470px);gap:18px;padding:0 28px 28px}.risk-column{padding-left:18px}.section-head{margin-bottom:12px}.section-head>span{color:#92a3b8;font-size:10px}.technology-list,.vulnerability-list{gap:10px}
+.technology-card{border-color:#293d54}.technology-main{grid-template-columns:48px minmax(170px,1fr) 110px 120px minmax(105px,auto) 28px;gap:12px;padding:14px}.tech-icon{width:46px;height:46px}.tech-icon img{width:27px;height:27px}.tech-name strong{font-size:14px}.tech-name span{margin-top:3px;color:#9aabc0;font-size:10px}.tech-name em{font-size:8.5px}.version strong,.confidence strong{font-size:11px}.version span,.confidence span{color:#91a3b9;font-size:8.5px}.cve-pill{padding:5px 8px;font-size:9px}.technology-main>b{font-size:17px}
+.technology-details{padding:0 15px 15px}.detail-grid{gap:11px;padding-top:13px}.detail-grid h4{font-size:9px}.evidence-item{padding:9px}.evidence-item b{font-size:9px}.evidence-item span{color:#96a8bd;font-size:9.5px}.verification-note{padding:10px;color:#a4b3c5;font-size:10px}.verification-note strong{font-size:10.5px}.verification-note code,.verification-note small{font-size:9px}
+.severity-summary{gap:7px;margin-bottom:12px}.severity-summary span{padding:8px;color:#9cadc1;font-size:8px}.severity-summary i{width:7px;height:7px}
+.vulnerability-card{padding:13px}.vuln-head{gap:8px}.vuln-head strong{font-size:10.5px}.vuln-head span{font-size:8px}.vuln-head em{font-size:8.5px}.vulnerability-card h4{margin:9px 0 5px;font-size:12px}.vulnerability-card p{color:#a3b1c3;font-size:10px}.vulnerability-card a{font-size:10px}.match-basis{font-size:8.8px}.empty b{font-size:12px}.empty span{font-size:10px}.toast{font-size:10.5px}.busy strong{font-size:13px}.busy span{font-size:10px}
+@media(max-width:1250px){.app-shell{grid-template-columns:230px minmax(0,1fr)}.content-grid{grid-template-columns:1fr}.risk-column{padding:16px 0 0;border-top:1px solid #26384c;border-left:0}.overview{align-items:stretch;flex-direction:column}.metrics{grid-template-columns:repeat(4,1fr)}}
