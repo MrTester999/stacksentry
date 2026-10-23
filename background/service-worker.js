@@ -99,8 +99,8 @@ chrome.webRequest.onHeadersReceived.addListener((details) => {
 async function collectDomEvidence(tabId) {
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId },
-    args: [OPENWAPP_REQUIREMENTS.domExists, OPENWAPP_REQUIREMENTS.domText, OPENWAPP_REQUIREMENTS.domAttribute, OPENWAPP_REQUIREMENTS.domProperty],
-    func: (existsSelectors, textSelectors, attributeRequirements, propertyRequirements) => {
+    args: [OPENWAPP_REQUIREMENTS.cookie, OPENWAPP_REQUIREMENTS.domExists, OPENWAPP_REQUIREMENTS.domText, OPENWAPP_REQUIREMENTS.domAttribute, OPENWAPP_REQUIREMENTS.domProperty],
+    func: (cookieNames, existsSelectors, textSelectors, attributeRequirements, propertyRequirements) => {
       const MAX_HTML = 1_500_000;
       const html = document.documentElement?.outerHTML || "";
       const boundedText = (nodes, limit) => {
@@ -121,6 +121,17 @@ async function collectDomEvidence(tabId) {
         if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value).slice(0, 500);
         return value == null ? "" : "true";
       };
+      const exactCookieNames = new Set(cookieNames.filter((name) => !name.includes("*")));
+      const cookieGlobs = cookieNames.filter((name) => name.includes("*")).map((name) => new RegExp(`^${name.replace(/[\\^$.+?()[\]{}|]/g, "\\$&").replaceAll("*", ".*")}$`, "s"));
+      const cookies = {};
+      for (const pair of String(document.cookie || "").split(/;\s*/).slice(0, 300)) {
+        const separator = pair.indexOf("=");
+        const rawName = separator < 0 ? pair : pair.slice(0, separator);
+        const name = rawName.trim().toLowerCase();
+        if (!name || (!exactCookieNames.has(name) && !cookieGlobs.some((glob) => glob.test(name)))) continue;
+        const value = separator < 0 ? "true" : pair.slice(separator + 1).slice(0, 500) || "true";
+        (cookies[name] ||= []).push(value);
+      }
       const domExists = existsSelectors.filter((selector) => select(selector));
       const domText = Object.fromEntries(textSelectors.map((selector) => {
         const values = select(selector, true).map((element) => (element.textContent || "").trim().slice(0, 500)).filter(Boolean);
@@ -159,6 +170,7 @@ async function collectDomEvidence(tabId) {
           httpEquiv: meta.httpEquiv || "",
           content: (meta.content || "").slice(0, 500)
         })),
+        cookies,
         domExists,
         domText,
         domAttribute,

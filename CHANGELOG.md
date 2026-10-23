@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.0
+
+- Wired all 502 cookie-name requirements from the maintained catalog into the
+  passive page collector, covering 375 technologies with cookie fingerprints.
+- Cookie matching runs locally against cookies already readable by the page;
+  values are never retained in reports, rendered in evidence, or sent remotely.
+- Added exact and wildcard cookie fixtures plus nearby-negative assertions to
+  prevent similarly named cookies from creating false detections.
+- Documented the honest coverage boundary: hidden backends, DNS-only signals,
+  certificate issuers, active probes, and robots-only signals remain outside the
+  passive browser scan.
+
 ## 2.2.2
 
 - Increased popup and report typography to readable interface sizes, with

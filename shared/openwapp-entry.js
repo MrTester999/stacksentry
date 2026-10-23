@@ -7,6 +7,7 @@ const PALETTE = ["#39e2ca", "#6389ff", "#f2b84b", "#ff6e83", "#9b8cff", "#50c878
 
 export const OPENWAPP_CATALOG_SIZE = catalog.technologies.size;
 export const OPENWAPP_REQUIREMENTS = Object.freeze({
+  cookie: [...requirements.cookie],
   js: [...requirements.js],
   domExists: [...requirements.domExists],
   domText: [...requirements.domText],
@@ -60,6 +61,11 @@ function safeCpeTemplate(cpe = "") {
 
 function ruleValues(rule, observation) {
   if (rule._tag === "Header") return observation.header.get(rule.name) || [];
+  if (rule._tag === "Cookie") {
+    if (!rule.name.includes("*")) return observation.cookie.get(rule.name) || [];
+    const glob = new RegExp(`^${rule.name.replaceAll(/[\\^$.+?()[\]{}|]/g, "\\$&").replaceAll("*", ".*")}$`, "s");
+    return [...observation.cookie].filter(([name]) => glob.test(name)).flatMap(([, values]) => values);
+  }
   if (rule._tag === "Meta") return observation.meta.get(rule.name) || [];
   if (rule._tag === "Js") return observation.js.get(rule.property) || [];
   if (rule._tag === "DomExists") return observation.domExists.has(rule.selector) ? [rule.selector] : [];
@@ -71,11 +77,12 @@ function ruleValues(rule, observation) {
 }
 
 function evidenceType(tag) {
-  return { Header: "header", Meta: "meta", Js: "global", ScriptSrc: "asset", Xhr: "resource", Url: "url", Css: "style", Script: "inline-script", Text: "text", Html: "dom", DomExists: "dom", DomText: "dom-text", DomAttribute: "dom-attribute", DomProperty: "dom-property" }[tag] || "catalog";
+  return { Header: "header", Cookie: "cookie", Meta: "meta", Js: "global", ScriptSrc: "asset", Xhr: "resource", Url: "url", Css: "style", Script: "inline-script", Text: "text", Html: "dom", DomExists: "dom", DomText: "dom-text", DomAttribute: "dom-attribute", DomProperty: "dom-property" }[tag] || "catalog";
 }
 
 function evidenceDetail(rule, value) {
   if (rule._tag === "Header") return `${rule.name}: ${String(value).slice(0, 180)}`;
+  if (rule._tag === "Cookie") return `Cookie present: ${rule.name}`;
   if (rule._tag === "Meta") return `${rule.name}: ${String(value).slice(0, 180)}`;
   if (rule._tag === "Js") return `${rule.property}: ${String(value).slice(0, 120)}`;
   if (rule._tag === "DomExists") return `Matched selector: ${rule.selector}`;
@@ -127,6 +134,7 @@ export function analyzeOpenWappEvidence(evidence = {}) {
     scriptSrc: [...new Set(scriptSources)],
     xhr: [...new Set(xhr)],
     header: valuesMap(evidence.headers),
+    cookie: valuesMap(evidence.cookies),
     meta: metaMap(evidence.meta),
     js: valuesMap(evidence.js, false),
     domExists: new Set(evidence.domExists || []),

@@ -36,6 +36,7 @@ for (const technology of TECHNOLOGIES) {
 assert.ok((await stat(new URL("vendor/simple-icons-LICENSE.txt", root))).size > 0, "Simple Icons license is missing");
 assert.equal(OPENWAPP_CATALOG_SIZE, Object.keys(fingerprints.technologies).length);
 assert.ok(OPENWAPP_REQUIREMENTS.js.length >= 5_000, "full catalog JavaScript requirements are missing");
+assert.ok(OPENWAPP_REQUIREMENTS.cookie.length >= 300, "full catalog cookie requirements are missing");
 assert.ok(OPENWAPP_REQUIREMENTS.domExists.length >= 1_500, "full catalog DOM selector requirements are missing");
 assert.ok(OPENWAPP_REQUIREMENTS.domAttribute.length >= 150, "full catalog DOM attribute requirements are missing");
 const catalogIconFiles = new Set(await readdir(new URL("icons/catalog/", root)));
@@ -176,6 +177,13 @@ const deepNegatives = analyzeOpenWappEvidence({
   js: { "LA.config": ["true"] }
 });
 assert.equal(deepNegatives.some((item) => ["30namaPlayer", "Bump", "Bootstrap Icons", "51.LA"].includes(item.name)), false, "nearby deep-signal fixture created a false positive");
+const cookieCatalog = analyzeOpenWappEvidence({ cookies: { awsalb: ["synthetic-routing-cookie"], "_ga_synthetic": ["GS1.1.synthetic"] } });
+const cookieNames = new Set(cookieCatalog.map((item) => item.name));
+assert.ok(cookieNames.has("Amazon ALB"), "exact cookie-name fingerprint was not detected");
+assert.ok(cookieNames.has("Google Analytics"), "wildcard cookie-name fingerprint was not detected");
+assert.ok(cookieCatalog.find((item) => item.name === "Amazon ALB").evidence.some((item) => item.type === "cookie" && !item.detail.includes("synthetic-routing-cookie")), "cookie evidence leaked a cookie value");
+const cookieNegatives = analyzeOpenWappEvidence({ cookies: { awsalbguide: ["synthetic-routing-cookie"], "ga_synthetic": ["GS1.1.synthetic"] } });
+assert.equal(cookieNegatives.some((item) => ["Amazon ALB", "Google Analytics"].includes(item.name)), false, "nearby cookie names created a false positive");
 let getterInvoked = false;
 let callableInvoked = false;
 const safeRoot = { Namespace: { version: "4.2.1" }, callable: Object.assign(() => { callableInvoked = true; }, { version: "8.1.0" }) };
@@ -265,9 +273,10 @@ globalThis.chrome = {
   },
   scripting: {
     async executeScript(input) {
+      if (input.world !== "MAIN") assert.ok(input.args[0].includes("awsalb"), "cookie requirements were not passed to the page collector");
       return [{ result: input.world === "MAIN"
         ? { jquery: "3.4.1" }
-        : { title: "Synthetic App", url: "https://app.example.test/", html: "<script src='jquery-3.4.1.min.js'></script>", htmlTruncated: false, scripts: [{ src: "https://app.example.test/jquery-3.4.1.min.js" }], links: [], meta: [] } }];
+        : { title: "Synthetic App", url: "https://app.example.test/", html: "<script src='jquery-3.4.1.min.js'></script>", htmlTruncated: false, scripts: [{ src: "https://app.example.test/jquery-3.4.1.min.js" }], links: [], meta: [], cookies: { awsalb: ["synthetic-routing-cookie"] } } }];
     }
   },
   runtime: {
@@ -291,6 +300,7 @@ await message({ type: "updateSettings", settings: { enabled: true, autoScan: tru
 response = await message({ type: "scan", tabId: 7, checkCves: false });
 assert.equal(response.ok, true, response.error);
 assert.equal(response.data.technologies.some((item) => item.id === "jquery"), true);
+assert.equal(response.data.technologies.some((item) => item.name === "Amazon ALB"), true, "cookie evidence did not reach the scan result");
 assert.equal(response.data.technologies.find((item) => item.id === "jquery").vulnerabilityStatus, "disabled");
 assert.equal(response.data.summary.vulnerabilities.total, 0);
 
@@ -306,7 +316,7 @@ console.log(`✓ ${findings.length} technology detections across header, meta, D
 console.log(`✓ ${TECHNOLOGIES.length} technology definitions have valid matcher syntax`);
 console.log("✓ Reviewed package ecosystems, generation mappings, CPE templates, and exact-version gate");
 console.log(`✓ ${OPENWAPP_CATALOG_SIZE} maintained catalog fingerprints and local icons`);
-console.log(`✓ ${OPENWAPP_REQUIREMENTS.js.length} safe JavaScript paths and ${OPENWAPP_REQUIREMENTS.domExists.length} DOM selectors wired into collection`);
+console.log(`✓ ${OPENWAPP_REQUIREMENTS.js.length} safe JavaScript paths, ${OPENWAPP_REQUIREMENTS.cookie.length} cookie names, and ${OPENWAPP_REQUIREMENTS.domExists.length} DOM selectors wired into collection`);
 console.log("✓ Positive and nearby-negative fingerprint fixtures");
 console.log("✓ Descriptor-safe version collection without invoking getters or functions");
 console.log("✓ Full popup technology list without result truncation");

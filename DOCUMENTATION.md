@@ -13,8 +13,8 @@ versions against OSV.dev or the NIST NVD.
    exclusion list.
 3. The extension collects a bounded local fingerprint from metadata, HTML,
    visible text, inline scripts and styles, asset URLs, dynamic resource URLs,
-   catalog-requested DOM signals, descriptor-safe JavaScript properties, and
-   response headers.
+   catalog-requested DOM signals, descriptor-safe JavaScript properties,
+   page-readable cookie signals, and response headers.
 4. StackSentry Core and the bundled 7,628-definition maintained catalog run
    locally. Overlapping results are merged with evidence, confidence, and any
    explicit version.
@@ -72,7 +72,9 @@ query time. Popup and report views update when asynchronous checks finish.
 - JavaScript inspection reads only own data-property descriptors. It does not
   call accessors, invoke functions, or execute page-provided code.
 - DOM content and response headers are not stored in completed reports.
-- `Set-Cookie` is excluded from collection.
+- Page-readable cookies are matched transiently in memory only. Cookie values
+  are never stored in reports, shown as evidence, or sent remotely.
+- `Set-Cookie` headers and HTTP-only cookies are excluded from collection.
 - Temporary scan results use `chrome.storage.session` and disappear when the
   browser session ends.
 - Settings, exclusions, and bounded CVE cache entries use local extension storage.
@@ -83,11 +85,13 @@ query time. Popup and report views update when asynchronous checks finish.
 
 Client-side browser inspection cannot discover every origin service. Technologies
 may suppress versions, bundle dependencies, sit behind a CDN, or expose misleading
-headers. Always inspect the evidence and validate high-impact findings manually.
+headers. DNS-only, certificate-issuer, active-probe, and robots-only catalog
+signals are outside this passive browser scan. Always inspect the evidence and
+validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-2.2.2.zip`.
+1. Extract `dist/stacksentry-2.3.0.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.
