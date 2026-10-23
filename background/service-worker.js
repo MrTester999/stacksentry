@@ -10,6 +10,8 @@ const SETTINGS_KEY = "settings";
 const CACHE_KEY = "cveCache";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_CVE_LOOKUPS = 12;
+const AUTO_SETTLE_MS = 2_200;
+const MANUAL_SETTLE_MS = 900;
 
 async function settings() {
   const stored = await chrome.storage.local.get(SETTINGS_KEY);
@@ -211,6 +213,62 @@ async function collectGlobalEvidence(tabId) {
   };
 }
 
+function uniqueBy(items, key) {
+  return [...new Map(items.filter(Boolean).map((item) => [key(item), item])).values()];
+}
+
+function mergeNestedEvidence(first, second) {
+  if (Array.isArray(first) || Array.isArray(second)) return [...new Set([...(first || []), ...(second || [])])];
+  if (first && second && typeof first === "object" && typeof second === "object") {
+    const output = {};
+    for (const name of new Set([...Object.keys(first), ...Object.keys(second)])) output[name] = mergeNestedEvidence(first[name], second[name]);
+    return output;
+  }
+  return second ?? first;
+}
+
+function mergeTextSamples(first = "", second = "", limit) {
+  if (!first || first === second) return String(second || first).slice(0, limit);
+  const half = Math.floor((limit - 1) / 2);
+  return `${String(first).slice(0, half)}\n${String(second).slice(0, limit - half - 1)}`;
+}
+
+function mergeEvidencePasses(first, second) {
+  if (!second) return first;
+  return {
+    ...first,
+    ...second,
+    html: mergeTextSamples(first.html, second.html, 1_500_000),
+    text: mergeTextSamples(first.text, second.text, 200_000),
+    inlineScripts: mergeTextSamples(first.inlineScripts, second.inlineScripts, 300_000),
+    styles: mergeTextSamples(first.styles, second.styles, 200_000),
+    scripts: uniqueBy([...(first.scripts || []), ...(second.scripts || [])], (item) => `${item.src || ""}\0${item.type || ""}`),
+    links: uniqueBy([...(first.links || []), ...(second.links || [])], (item) => `${item.href || ""}\0${item.rel || ""}`),
+    resources: uniqueBy([...(first.resources || []), ...(second.resources || [])], (item) => `${item.name || ""}\0${item.initiatorType || ""}`),
+    meta: uniqueBy([...(first.meta || []), ...(second.meta || [])], (item) => `${item.name || ""}\0${item.property || ""}\0${item.httpEquiv || ""}\0${item.content || ""}`),
+    cookies: mergeNestedEvidence(first.cookies, second.cookies),
+    domExists: [...new Set([...(first.domExists || []), ...(second.domExists || [])])],
+    domText: mergeNestedEvidence(first.domText, second.domText),
+    domAttribute: mergeNestedEvidence(first.domAttribute, second.domAttribute),
+    domProperty: mergeNestedEvidence(first.domProperty, second.domProperty),
+    htmlTruncated: Boolean(first.htmlTruncated || second.htmlTruncated)
+  };
+}
+
+function mergeGlobalPasses(first = {}, second = {}) {
+  return { ...first, ...second, js: { ...(first.js || {}), ...(second.js || {}) } };
+}
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function collectEvidencePass(tabId) {
+  const [dom, globals] = await Promise.all([
+    collectDomEvidence(tabId),
+    collectGlobalEvidence(tabId).catch(() => ({}))
+  ]);
+  return { dom, globals };
+}
+
 async function cachedLookup(technology) {
   const key = vulnerabilityCacheKey(technology);
   if (!key) return lookupTechnologyVulnerabilities(technology);
@@ -273,11 +331,26 @@ async function scanTab(tabId, options = {}) {
     throw new Error("This site is excluded from automatic scanning");
   }
   await setBadge(tabId, null, "scanning");
-  const [dom, globals, headerState] = await Promise.all([
-    collectDomEvidence(tabId),
-    collectGlobalEvidence(tabId).catch(() => ({})),
+  const settleMs = Math.max(0, Math.min(5_000, Number(options.settleMs) || 0));
+  const [initialPass, headerState] = await Promise.all([
+    collectEvidencePass(tabId),
     chrome.storage.session.get(`${HEADER_PREFIX}${tabId}`)
   ]);
+  let dom = initialPass.dom;
+  let globals = initialPass.globals;
+  let collectionPasses = 1;
+  if (settleMs) {
+    await wait(settleMs);
+    const latestTab = await chrome.tabs.get(tabId);
+    const latestSettings = await settings();
+    if (latestTab.url !== tab.url) throw new Error("Page changed while StackSentry was collecting evidence");
+    if (!latestSettings.enabled) throw new Error("StackSentry was turned off during analysis");
+    if (!options.force && isExcluded(tab.url, latestSettings.excludedHosts)) throw new Error("This site was excluded during analysis");
+    const settledPass = await collectEvidencePass(tabId);
+    dom = mergeEvidencePasses(initialPass.dom, settledPass.dom);
+    globals = mergeGlobalPasses(initialPass.globals, settledPass.globals);
+    collectionPasses = 2;
+  }
   const captured = headerState[`${HEADER_PREFIX}${tabId}`];
   const headers = captured?.url === tab.url ? captured.headers : {};
   const evidence = { ...dom, globals, js: globals.js || {}, headers };
@@ -287,6 +360,7 @@ async function scanTab(tabId, options = {}) {
     ? detected.map((item) => ({ ...item, vulnerabilityStatus: !item.version ? "version-unknown" : !item.versionExact ? "version-inexact" : (item.package || item.cpe) ? "pending" : "unsupported", vulnerabilities: [] }))
     : await addVulnerabilities(detected, shouldCheckCves);
   const result = {
+    scanId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     tabId,
     url: dom.url,
     title: dom.title || tab.title || hostname(tab.url),
@@ -295,6 +369,8 @@ async function scanTab(tabId, options = {}) {
     htmlTruncated: Boolean(dom.htmlTruncated),
     statusCode: captured?.statusCode || null,
     catalogSize: OPENWAPP_CATALOG_SIZE,
+    collectionPasses,
+    settleDelayMs: settleMs,
     technologies,
     cveLookupPending: Boolean(options.deferCves && shouldCheckCves),
     summary: {
@@ -307,8 +383,8 @@ async function scanTab(tabId, options = {}) {
   if (result.cveLookupPending) {
     void (async () => {
       const enriched = await addVulnerabilities(detected, true);
-      const [latestTab, latestSettings] = await Promise.all([chrome.tabs.get(tabId).catch(() => null), settings()]);
-      if (!latestTab || latestTab.url !== result.url || !latestSettings.enabled || isExcluded(result.url, latestSettings.excludedHosts)) return;
+      const [latestTab, latestSettings, latestResult] = await Promise.all([chrome.tabs.get(tabId).catch(() => null), settings(), getResult(tabId)]);
+      if (!latestTab || latestTab.url !== result.url || !latestSettings.enabled || isExcluded(result.url, latestSettings.excludedHosts) || latestResult?.scanId !== result.scanId) return;
       result.technologies = enriched;
       result.cveLookupPending = false;
       result.summary.technologies = summarizeTechnologies(enriched);
@@ -345,7 +421,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } else if (message.type === "scan") {
         const target = Number.isInteger(tabId) ? tabId : (await activeTab())?.id;
         const checkCves = message.checkCves !== false;
-        data = await scanTab(target, { force: true, checkCves, deferCves: checkCves });
+        data = await scanTab(target, { force: true, checkCves, deferCves: checkCves, settleMs: MANUAL_SETTLE_MS });
       } else if (message.type === "getResult") {
         data = await getResult(tabId);
       } else if (message.type === "openReport") {
@@ -363,7 +439,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (excluded.has(host)) excluded.delete(host); else excluded.add(host);
         data = await saveSettings({ ...current, excludedHosts: [...excluded] });
         const target = Number.isInteger(tabId) ? tabId : (await activeTab())?.id;
-        if (excluded.has(host)) await setBadge(target, null, "excluded"); else void scanTab(target, { force: true });
+        if (excluded.has(host)) await setBadge(target, null, "excluded"); else void scanTab(target, { force: true, settleMs: MANUAL_SETTLE_MS });
       } else {
         throw new Error("Unknown StackSentry request");
       }
@@ -381,7 +457,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (!current.enabled) return setBadge(tabId);
     if (!current.autoScan) return setBadge(tabId);
     if (isExcluded(tab.url, current.excludedHosts)) return setBadge(tabId, null, "excluded");
-    return scanTab(tabId, { deferCves: true }).catch(() => setBadge(tabId));
+    return scanTab(tabId, { deferCves: true, settleMs: AUTO_SETTLE_MS }).catch(() => setBadge(tabId));
   });
 });
 
@@ -393,7 +469,7 @@ chrome.commands.onCommand.addListener((command) => {
   if (command !== "scan-current-site") return;
   void activeTab().then(async (tab) => {
     if (!tab) return;
-    await scanTab(tab.id, { force: true });
+    await scanTab(tab.id, { force: true, settleMs: MANUAL_SETTLE_MS });
     await openReport(tab.id);
   }).catch(() => {});
 });

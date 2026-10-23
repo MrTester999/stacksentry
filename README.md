@@ -6,7 +6,7 @@
 
   **Automatic web-stack fingerprinting with evidence, exact versions, and version-aware CVE intelligence.**
 
-  [![Version](https://img.shields.io/badge/version-2.3.0-39cdb9?style=flat-square)](manifest.json)
+  [![Version](https://img.shields.io/badge/version-2.3.1-39cdb9?style=flat-square)](manifest.json)
   [![Fingerprints](https://img.shields.io/badge/fingerprints-7%2C628-6389ff?style=flat-square)](#technology-coverage)
   [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](manifest.json)
   [![Data](https://img.shields.io/badge/CVE%20data-OSV%20%2B%20NVD-5d84ff?style=flat-square)](#version-aware-vulnerability-intelligence)
@@ -47,6 +47,8 @@ are never guessed and are never labeled vulnerable.
 ## Features
 
 - **Automatic scanning:** analyzes every normal website after navigation.
+- **Settled two-pass collection:** merges immediate and delayed evidence so
+  dynamically loaded technologies appear without toggling or reopening the tool.
 - **Master On/Off:** stops both automatic and manual analysis and clears badges.
 - **Site exclusions:** pauses Auto Scan for selected hostnames and subdomains.
 - **Broad maintained catalog:** 7,628 technology fingerprints across 109
@@ -108,7 +110,7 @@ of performing a broad product-name lookup.
 
 ## Installation
 
-1. Download and extract [`stacksentry-2.3.0.zip`](dist/stacksentry-2.3.0.zip).
+1. Download and extract [`stacksentry-2.3.1.zip`](dist/stacksentry-2.3.1.zip).
 2. Open `chrome://extensions`.
 3. Enable **Developer mode**.
 4. Select **Load unpacked**.
@@ -197,12 +199,12 @@ fingerprint source and all dependency notices are included in the release.
 - [Detailed documentation](DOCUMENTATION.md)
 - [Plain-text guide](DOCUMENTATION.txt)
 - [Changelog](CHANGELOG.md)
-- [Release ZIP](dist/stacksentry-2.3.0.zip)
+- [Release ZIP](dist/stacksentry-2.3.1.zip)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ---
 
 <div align="center">
-  <strong>StackSentry v2.3.0</strong><br>
+  <strong>StackSentry v2.3.1</strong><br>
   Evidence first. Exact versions. Honest vulnerability intelligence.
 </div>

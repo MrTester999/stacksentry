@@ -1,4 +1,4 @@
-STACKSENTRY v2.3.0
+STACKSENTRY v2.3.1
 ==================
 
 PURPOSE
@@ -8,7 +8,7 @@ versions and evidence, and checks exact supported versions against OSV or NVD.
 
 QUICK START
 -----------
-1. Extract dist/stacksentry-2.3.0.zip.
+1. Extract dist/stacksentry-2.3.1.zip.
 2. Open chrome://extensions.
 3. Enable Developer mode.
 4. Select Load unpacked and choose the extracted stacksentry folder.
@@ -23,6 +23,12 @@ CVE checks      - Queries exact supported versions through OSV or NVD.
 Exclude site    - Pauses Auto Scan for the current hostname and subdomains.
 Analyze site    - Runs a manual scan.
 Alt+Shift+S     - Scans the active site and opens its report.
+
+SCANNING
+--------
+Each scan merges an immediate page snapshot with a second snapshot after a short
+settle window. This captures late scripts, analytics, SPA resources, and runtime
+globals without requiring the extension to be turned off and on again.
 
 ACCURACY
 --------

@@ -186,7 +186,7 @@ function render() {
   elements.siteUrl.textContent = result.url;
   elements.siteIcon.textContent = result.host?.[0]?.toUpperCase() || "S";
   elements.catalogCoverage.textContent = `${(result.catalogSize || 0).toLocaleString()} maintained fingerprints`;
-  elements.scanMeta.textContent = `Scanned ${new Date(result.scannedAt).toLocaleString()} · HTTP ${result.statusCode || "unknown"}${result.htmlTruncated ? " · large DOM sample truncated safely" : ""}`;
+  elements.scanMeta.textContent = `Scanned ${new Date(result.scannedAt).toLocaleString()} · HTTP ${result.statusCode || "unknown"}${result.collectionPasses > 1 ? " · settled two-pass collection" : ""}${result.htmlTruncated ? " · large DOM sample truncated safely" : ""}`;
   elements.technologyTotal.textContent = tech.total;
   elements.versionTotal.textContent = tech.versioned;
   elements.vulnerabilityTotal.textContent = vuln.total;

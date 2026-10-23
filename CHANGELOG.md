@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.1
+
+- Replaced the single immediate page snapshot with settled two-pass collection
+  for automatic and manual scans, catching technologies loaded shortly after
+  `document.readyState` reaches complete.
+- Merged early and settled script, stylesheet, resource, metadata, cookie, DOM,
+  and JavaScript evidence so late detection does not discard transient signals.
+- Added per-scan identities that prevent an older asynchronous CVE response from
+  overwriting the technology inventory of a newer scan.
+- Added a regression fixture proving one early technology and one late dynamic
+  technology are both retained in the completed result.
+
 ## 2.3.0
 
 - Wired all 502 cookie-name requirements from the maintained catalog into the

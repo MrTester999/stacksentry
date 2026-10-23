@@ -251,6 +251,7 @@ assert.deepEqual(summarizeVulnerabilities([{ vulnerabilities: osvResult.vulnerab
 const listeners = {};
 const localStore = new Map();
 const sessionStore = new Map();
+let domCollectionCount = 0;
 function storageArea(store) {
   return {
     async get(key) {
@@ -274,9 +275,13 @@ globalThis.chrome = {
   scripting: {
     async executeScript(input) {
       if (input.world !== "MAIN") assert.ok(input.args[0].includes("awsalb"), "cookie requirements were not passed to the page collector");
+      if (input.world !== "MAIN") domCollectionCount += 1;
+      const settled = input.world !== "MAIN" && domCollectionCount % 2 === 0;
       return [{ result: input.world === "MAIN"
-        ? { jquery: "3.4.1" }
-        : { title: "Synthetic App", url: "https://app.example.test/", html: "<script src='jquery-3.4.1.min.js'></script>", htmlTruncated: false, scripts: [{ src: "https://app.example.test/jquery-3.4.1.min.js" }], links: [], meta: [], cookies: { awsalb: ["synthetic-routing-cookie"] } } }];
+        ? { "jQuery.fn.jquery": "3.4.1" }
+        : settled
+          ? { title: "Synthetic App", url: "https://app.example.test/", html: "<main>Settled application</main>", htmlTruncated: false, scripts: [{ src: "https://static.cloudflareinsights.com/beacon.min.js/v-synthetic" }], links: [], resources: [{ name: "https://static.cloudflareinsights.com/beacon.min.js/v-synthetic", initiatorType: "script" }], meta: [], cookies: { awsalb: ["synthetic-routing-cookie"] } }
+          : { title: "Synthetic App", url: "https://app.example.test/", html: "<script src='https://cdn.example.test/moment.js/2.29.4/moment.min.js'></script>", htmlTruncated: false, scripts: [{ src: "https://cdn.example.test/moment.js/2.29.4/moment.min.js" }], links: [], resources: [], meta: [], cookies: { awsalb: ["synthetic-routing-cookie"] } } }];
     }
   },
   runtime: {
@@ -287,6 +292,8 @@ globalThis.chrome = {
   webRequest: { onHeadersReceived: { addListener(fn) { listeners.headers = fn; } } },
   commands: { onCommand: { addListener(fn) { listeners.command = fn; } } }
 };
+const nativeSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = (callback) => { queueMicrotask(callback); return 0; };
 await import(`../background/service-worker.js?test=${Date.now()}`);
 assert.ok(listeners.message && listeners.tabUpdated && listeners.headers, "service worker listeners not registered");
 const message = (payload) => new Promise((resolve) => listeners.message(payload, {}, resolve));
@@ -301,8 +308,12 @@ response = await message({ type: "scan", tabId: 7, checkCves: false });
 assert.equal(response.ok, true, response.error);
 assert.equal(response.data.technologies.some((item) => item.id === "jquery"), true);
 assert.equal(response.data.technologies.some((item) => item.name === "Amazon ALB"), true, "cookie evidence did not reach the scan result");
+assert.equal(response.data.collectionPasses, 2, "manual scan did not perform settled two-pass collection");
+assert.equal(response.data.technologies.some((item) => item.id === "moment"), true, "first-pass technology was lost during evidence merge");
+assert.equal(response.data.technologies.some((item) => item.id === "cloudflare-browser-insights"), true, "late dynamic resource was not detected on the settled pass");
 assert.equal(response.data.technologies.find((item) => item.id === "jquery").vulnerabilityStatus, "disabled");
 assert.equal(response.data.summary.vulnerabilities.total, 0);
+globalThis.setTimeout = nativeSetTimeout;
 
 const updatedPopupSource = await readFile(new URL("popup/popup.js", root), "utf8");
 const reportSource = await readFile(new URL("report/report.js", root), "utf8");
@@ -310,6 +321,9 @@ for (const status of ["checked", "pending", "version-unknown", "version-inexact"
 assert.ok(updatedPopupSource.includes("chrome.storage.onChanged"), "popup does not receive completed asynchronous CVE results");
 assert.ok(reportSource.includes("Exact version match"), "report does not explain exact-version CVE attribution");
 assert.ok(reportSource.includes("chrome.storage.onChanged"), "report does not receive completed asynchronous CVE results");
+const serviceWorkerSource = await readFile(new URL("background/service-worker.js", root), "utf8");
+assert.ok(serviceWorkerSource.includes("settleMs: AUTO_SETTLE_MS"), "automatic scans do not use settled collection");
+assert.ok(serviceWorkerSource.includes("latestResult?.scanId !== result.scanId"), "stale CVE enrichment can overwrite a newer scan");
 
 console.log(`✓ Manifest v${manifest.version} and ${new Set(required).size} required assets`);
 console.log(`✓ ${findings.length} technology detections across header, meta, DOM, script, and global evidence`);
@@ -324,3 +338,4 @@ console.log("✓ Core/catalog deduplication with catalog evidence and version ex
 console.log("✓ OSV/NVD exact-version hits, empty results, deduplication, no-version skip, and HTTP failure handling");
 console.log("✓ Distinct CVE states, exact-query provenance, and live asynchronous result rendering");
 console.log("✓ Master switch, scan message, storage, and listener smoke tests");
+console.log("✓ Settled two-pass evidence merge catches late resources without losing first-pass detections");
