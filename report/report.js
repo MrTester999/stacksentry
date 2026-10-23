@@ -91,7 +91,7 @@ function renderTechnologies() {
     const confidence = document.createElement("div");
     confidence.className = "confidence";
     confidence.append(textNode("strong", `${technology.score}%`, technology.confidence), textNode("span", `${technology.confidence} confidence`));
-    const cve = textNode("span", technology.vulnerabilities?.length ? `${technology.vulnerabilities.length} CVE${technology.vulnerabilities.length === 1 ? "" : "s"}` : technology.vulnerabilityStatus === "checked" ? "No known CVEs" : "Not verified", `cve-pill${technology.vulnerabilities?.length ? " risk" : ""}`);
+    const cve = textNode("span", technology.vulnerabilities?.length ? `${technology.vulnerabilities.length} CVE${technology.vulnerabilities.length === 1 ? "" : "s"}` : technology.vulnerabilityStatus === "checked" ? "No CVEs returned" : "Not verified", `cve-pill${technology.vulnerabilities?.length ? " risk" : ""}`);
     button.append(icon, name, version, confidence, cve, textNode("b", "›"));
     const details = document.createElement("div");
     details.className = "technology-details";

@@ -5,7 +5,7 @@ import fingerprints from "@openwapp/fingerprints";
 import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
 import { TECHNOLOGIES } from "../data/technologies.js";
-import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, openWappTechnologyId } from "../vendor/openwapp-engine.js";
+import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, OPENWAPP_REQUIREMENTS, openWappTechnologyId } from "../vendor/openwapp-engine.js";
 
 const root = new URL("../", import.meta.url);
 const json = async (path) => JSON.parse(await readFile(new URL(path, root), "utf8"));
@@ -33,6 +33,9 @@ for (const technology of TECHNOLOGIES) {
 }
 assert.ok((await stat(new URL("vendor/simple-icons-LICENSE.txt", root))).size > 0, "Simple Icons license is missing");
 assert.equal(OPENWAPP_CATALOG_SIZE, Object.keys(fingerprints.technologies).length);
+assert.ok(OPENWAPP_REQUIREMENTS.js.length >= 5_000, "full catalog JavaScript requirements are missing");
+assert.ok(OPENWAPP_REQUIREMENTS.domExists.length >= 1_500, "full catalog DOM selector requirements are missing");
+assert.ok(OPENWAPP_REQUIREMENTS.domAttribute.length >= 150, "full catalog DOM attribute requirements are missing");
 const catalogIconFiles = new Set(await readdir(new URL("icons/catalog/", root)));
 assert.equal(catalogIconFiles.size, OPENWAPP_CATALOG_SIZE, "catalog icon count does not match catalog size");
 for (const name of Object.keys(fingerprints.technologies)) assert.ok(catalogIconFiles.has(`${openWappTechnologyId(name)}.svg`), `${name} catalog icon is missing`);
@@ -147,9 +150,28 @@ assert.equal(broadByName.PHP.version, "8.2.7");
 assert.equal(broadByName.jQuery.version, "3.7.1");
 assert.equal(broadByName.jQuery.source, "OpenWapp");
 assert.ok(broadByName.jQuery.evidence.some((item) => item.type === "asset"));
+const deepCatalog = analyzeOpenWappEvidence({
+  domExists: ["section[class*='player30nama']"],
+  domText: { ".doc-navigation footer, footer.catalog-footer": ["Powered by Bump"] },
+  domAttribute: { "link[href*='bootstrap-icons']": { href: ["https://cdn.example.test/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"] } },
+  domProperty: { "#app, .app, #root, .root, body, body > *, body > * > *, body > * > * > *": { __k: ["true"] } },
+  js: { "LA.config.ck": ["true"] }
+});
+const deepNames = new Set(deepCatalog.map((item) => item.name));
+for (const name of ["30namaPlayer", "Bump", "Bootstrap Icons", "Preact", "51.LA"]) assert.ok(deepNames.has(name), `${name} deep catalog signal was not detected`);
+const deepNegatives = analyzeOpenWappEvidence({
+  domExists: ["section[class*='player30nama-guide']"],
+  domText: { ".doc-navigation footer, footer.catalog-footer": ["Built for a speed bump"] },
+  domAttribute: { "link[href*='bootstrap-icons']": { href: ["https://example.test/bootstrap-guide.html"] } },
+  js: { "LA.config": ["true"] }
+});
+assert.equal(deepNegatives.some((item) => ["30namaPlayer", "Bump", "Bootstrap Icons", "51.LA"].includes(item.name)), false, "nearby deep-signal fixture created a false positive");
 const combined = mergeTechnologyDetections(findings, broadCatalog);
 assert.equal(combined.filter((item) => item.name === "jQuery").length, 1, "core and maintained catalog produced duplicate jQuery rows");
 assert.equal(combined.find((item) => item.name === "jQuery").source, "Core + OpenWapp");
+const popupSource = await readFile(new URL("popup/popup.js", root), "utf8");
+assert.equal(/technologies\.slice\(/.test(popupSource), false, "popup still truncates the technology list");
+assert.ok(popupSource.includes("technology-group"), "popup does not group the complete technology list");
 
 const summary = summarizeTechnologies(findings);
 assert.equal(summary.total, findings.length);
@@ -165,6 +187,15 @@ assert.equal(osvRequest.body.package.ecosystem, "npm");
 assert.equal(osvResult.vulnerabilities[0].id, "CVE-2099-0001");
 assert.equal(osvResult.vulnerabilities[0].severity, "high");
 assert.equal(vulnerabilityCacheKey({ version: "3.4.1", package: { ecosystem: "npm", name: "jquery" } }), "osv:npm:jquery:3.4.1");
+const osvEmpty = await lookupTechnologyVulnerabilities({ id: "synthetic", version: "1.0.0", package: { ecosystem: "npm", name: "synthetic-safe-package" } }, async () => ({ ok: true, json: async () => ({ vulns: [] }) }));
+assert.equal(osvEmpty.status, "checked");
+assert.deepEqual(osvEmpty.vulnerabilities, []);
+const osvDeduped = await lookupTechnologyVulnerabilities({ id: "synthetic", version: "1.0.0", package: { ecosystem: "npm", name: "synthetic-package" } }, async () => ({ ok: true, json: async () => ({ vulns: [
+  { id: "GHSA-one", aliases: ["CVE-2099-0003"], summary: "First alias", database_specific: { severity: "MEDIUM" } },
+  { id: "GHSA-two", aliases: ["CVE-2099-0003"], summary: "Duplicate alias", database_specific: { severity: "HIGH" } }
+] }) }));
+assert.equal(osvDeduped.vulnerabilities.length, 1, "duplicate CVE aliases were counted twice");
+assert.equal(osvDeduped.vulnerabilities[0].severity, "high");
 
 let nvdUrl = "";
 const nvdResult = await lookupTechnologyVulnerabilities({ id: "nginx", version: "1.24.0", cpe: "cpe:2.3:a:nginx:nginx:{version}:*:*:*:*:*:*:*" }, async (url) => {
@@ -175,6 +206,8 @@ assert.ok(decodeURIComponent(nvdUrl).includes("nginx:1.24.0"));
 assert.equal(nvdResult.vulnerabilities[0].severity, "critical");
 assert.equal(nvdResult.vulnerabilities[0].score, 9.8);
 assert.equal((await lookupTechnologyVulnerabilities({ id: "react", version: "", package: { ecosystem: "npm", name: "react" } }, () => { throw new Error("must not fetch"); })).status, "version-unknown");
+assert.equal((await lookupTechnologyVulnerabilities({ id: "unknown", version: "1.2.3" }, () => { throw new Error("must not fetch"); })).status, "unsupported");
+await assert.rejects(() => lookupTechnologyVulnerabilities({ id: "jquery", version: "3.4.1", package: { ecosystem: "npm", name: "jquery" } }, async () => ({ ok: false, status: 503 })), /OSV returned HTTP 503/);
 assert.deepEqual(summarizeVulnerabilities([{ vulnerabilities: osvResult.vulnerabilities }, { vulnerabilities: nvdResult.vulnerabilities }]), { total: 2, critical: 1, high: 1, medium: 0, low: 0, unknown: 0, affectedTechnologies: 2 });
 
 const listeners = {};
@@ -234,7 +267,9 @@ console.log(`✓ Manifest v${manifest.version} and ${new Set(required).size} req
 console.log(`✓ ${findings.length} technology detections across header, meta, DOM, script, and global evidence`);
 console.log(`✓ ${TECHNOLOGIES.length} technology definitions have valid matcher syntax`);
 console.log(`✓ ${OPENWAPP_CATALOG_SIZE} maintained catalog fingerprints and local icons`);
+console.log(`✓ ${OPENWAPP_REQUIREMENTS.js.length} safe JavaScript paths and ${OPENWAPP_REQUIREMENTS.domExists.length} DOM selectors wired into collection`);
 console.log("✓ Positive and nearby-negative fingerprint fixtures");
+console.log("✓ Full popup technology list without result truncation");
 console.log("✓ Core/catalog deduplication with catalog evidence and version extraction");
-console.log("✓ OSV and NVD exact-version normalization with no-version skip");
+console.log("✓ OSV/NVD exact-version hits, empty results, deduplication, no-version skip, and HTTP failure handling");
 console.log("✓ Master switch, scan message, storage, and listener smoke tests");

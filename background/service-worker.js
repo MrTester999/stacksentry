@@ -1,6 +1,6 @@
 import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
-import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE } from "../vendor/openwapp-engine.js";
+import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, OPENWAPP_REQUIREMENTS } from "../vendor/openwapp-engine.js";
 
 const RESULT_PREFIX = "scanResult:";
 const HEADER_PREFIX = "responseHeaders:";
@@ -97,7 +97,8 @@ chrome.webRequest.onHeadersReceived.addListener((details) => {
 async function collectDomEvidence(tabId) {
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => {
+    args: [OPENWAPP_REQUIREMENTS.domExists, OPENWAPP_REQUIREMENTS.domText, OPENWAPP_REQUIREMENTS.domAttribute, OPENWAPP_REQUIREMENTS.domProperty],
+    func: (existsSelectors, textSelectors, attributeRequirements, propertyRequirements) => {
       const MAX_HTML = 1_500_000;
       const html = document.documentElement?.outerHTML || "";
       const boundedText = (nodes, limit) => {
@@ -110,6 +111,32 @@ async function collectDomEvidence(tabId) {
         }
         return output;
       };
+      const select = (selector, all = false) => {
+        try { return all ? [...document.querySelectorAll(selector)].slice(0, 12) : document.querySelector(selector); }
+        catch { return all ? [] : null; }
+      };
+      const primitive = (value) => {
+        if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value).slice(0, 500);
+        return value == null ? "" : "true";
+      };
+      const domExists = existsSelectors.filter((selector) => select(selector));
+      const domText = Object.fromEntries(textSelectors.map((selector) => {
+        const values = select(selector, true).map((element) => (element.textContent || "").trim().slice(0, 500)).filter(Boolean);
+        return [selector, [...new Set(values)]];
+      }).filter(([, values]) => values.length));
+      const domAttribute = Object.fromEntries(attributeRequirements.map(([selector, attributes]) => {
+        const elements = select(selector, true);
+        const values = Object.fromEntries(attributes.map((attribute) => [attribute, [...new Set(elements.map((element) => element.getAttribute(attribute) || "").filter(Boolean).map((value) => value.slice(0, 500)))]]).filter(([, found]) => found.length));
+        return [selector, values];
+      }).filter(([, values]) => Object.keys(values).length));
+      const domProperty = Object.fromEntries(propertyRequirements.map(([selector, properties]) => {
+        const elements = select(selector, true);
+        const values = Object.fromEntries(properties.map((property) => [property, [...new Set(elements.map((element) => {
+          const descriptor = Object.getOwnPropertyDescriptor(element, property);
+          return descriptor && "value" in descriptor ? primitive(descriptor.value) : "";
+        }).filter(Boolean))]]).filter(([, found]) => found.length));
+        return [selector, values];
+      }).filter(([, values]) => Object.keys(values).length));
       return {
         title: document.title,
         url: location.href,
@@ -129,7 +156,11 @@ async function collectDomEvidence(tabId) {
           property: meta.getAttribute("property") || "",
           httpEquiv: meta.httpEquiv || "",
           content: (meta.content || "").slice(0, 500)
-        }))
+        })),
+        domExists,
+        domText,
+        domAttribute,
+        domProperty
       };
     }
   });
@@ -140,7 +171,8 @@ async function collectGlobalEvidence(tabId) {
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
-    func: () => {
+    args: [OPENWAPP_REQUIREMENTS.js],
+    func: (requiredPaths) => {
       const value = (reader) => {
         try {
           const found = reader();
@@ -166,9 +198,25 @@ async function collectGlobalEvidence(tabId) {
         requirejs: value(() => window.requirejs?.version),
         sentry: value(() => window.Sentry?.SDK_VERSION || window.__SENTRY__)
       };
+      const safePathValue = (path) => {
+        const parts = String(path).trim().split(".").filter(Boolean);
+        let current = window;
+        for (const part of parts) {
+          if ((typeof current !== "object" && typeof current !== "function") || current === null) return "";
+          let descriptor;
+          try { descriptor = Object.getOwnPropertyDescriptor(current, part); }
+          catch { return ""; }
+          if (!descriptor || !("value" in descriptor)) return "";
+          current = descriptor.value;
+        }
+        if (typeof current === "string" || typeof current === "number" || typeof current === "boolean") return String(current).slice(0, 500);
+        return current == null ? "" : "true";
+      };
+      const catalogJs = Object.fromEntries(requiredPaths.map((path) => [path, safePathValue(path)]).filter(([, found]) => found));
       return {
         ...globals,
         js: {
+          ...catalogJs,
           "$.fn.jquery": globals.jquery,
           "jQuery.fn.jquery": globals.jquery,
           "React.version": globals.react,

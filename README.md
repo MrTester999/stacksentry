@@ -6,7 +6,7 @@
 
   **Automatic web-stack fingerprinting with evidence, exact versions, and version-aware CVE intelligence.**
 
-  [![Version](https://img.shields.io/badge/version-2.0.0-39cdb9?style=flat-square)](manifest.json)
+  [![Version](https://img.shields.io/badge/version-2.1.0-39cdb9?style=flat-square)](manifest.json)
   [![Fingerprints](https://img.shields.io/badge/fingerprints-7%2C628-6389ff?style=flat-square)](#technology-coverage)
   [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](manifest.json)
   [![Data](https://img.shields.io/badge/CVE%20data-OSV%20%2B%20NVD-5d84ff?style=flat-square)](#version-aware-vulnerability-intelligence)
@@ -20,7 +20,7 @@
 
 StackSentry automatically analyzes each HTTP or HTTPS site after it loads. It
 collects non-invasive fingerprints from the DOM, script and stylesheet URLs,
-generator metadata, selected JavaScript globals, and observable response
+generator metadata, catalog-requested JavaScript properties, and observable response
 headers. Every detection includes its evidence and confidence score.
 
 When StackSentry finds an **exact version**, it can check that product version
@@ -50,9 +50,11 @@ are never guessed and are never labeled vulnerable.
 - **Site exclusions:** pauses Auto Scan for selected hostnames and subdomains.
 - **Broad maintained catalog:** 7,628 technology fingerprints across 109
   categories, pinned to a reviewed OpenWapp/WebAppAnalyzer dataset revision.
-- **Eight passive evidence layers:** headers, metadata, HTML, visible text,
-  inline scripts and styles, asset URLs, dynamic resources, and selected safe
-  runtime globals.
+- **Deep passive evidence:** headers, metadata, HTML, visible text, inline
+  scripts and styles, asset URLs, dynamic resources, 1,795 catalog-requested
+  DOM signals, and 5,606 descriptor-safe JavaScript property paths.
+- **Complete popup inventory:** every detected technology appears in a
+  scrollable, category-grouped popup list with its local icon and version.
 - **Technology icons:** every detected product has a bundled local brand or
   category icon; no remote icon requests are made.
 - **Version extraction:** records the version only when a fingerprint exposes it.
@@ -97,7 +99,7 @@ of performing a broad product-name lookup.
 
 ## Installation
 
-1. Download and extract [`stacksentry-2.0.0.zip`](dist/stacksentry-2.0.0.zip).
+1. Download and extract [`stacksentry-2.1.0.zip`](dist/stacksentry-2.1.0.zip).
 2. Open `chrome://extensions`.
 3. Enable **Developer mode**.
 4. Select **Load unpacked**.
@@ -181,12 +183,12 @@ fingerprint source and all dependency notices are included in the release.
 - [Detailed documentation](DOCUMENTATION.md)
 - [Plain-text guide](DOCUMENTATION.txt)
 - [Changelog](CHANGELOG.md)
-- [Release ZIP](dist/stacksentry-2.0.0.zip)
+- [Release ZIP](dist/stacksentry-2.1.0.zip)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ---
 
 <div align="center">
-  <strong>StackSentry v2.0.0</strong><br>
+  <strong>StackSentry v2.1.0</strong><br>
   Evidence first. Exact versions. Honest vulnerability intelligence.
 </div>

@@ -13,7 +13,8 @@ versions against OSV.dev or the NIST NVD.
    exclusion list.
 3. The extension collects a bounded local fingerprint from metadata, HTML,
    visible text, inline scripts and styles, asset URLs, dynamic resource URLs,
-   selected safe globals, and response headers.
+   catalog-requested DOM signals, descriptor-safe JavaScript properties, and
+   response headers.
 4. StackSentry Core and the bundled 7,628-definition maintained catalog run
    locally. Overlapping results are merged with evidence, confidence, and any
    explicit version.
@@ -30,6 +31,9 @@ versions against OSV.dev or the NIST NVD.
   exclusion list. Subdomains are also covered.
 - **Analyze this website:** starts a manual scan when the extension is enabled.
 - **Open full intelligence report:** opens the evidence and advisory workspace.
+
+The popup itself also displays every detected technology, grouped by category.
+The list scrolls inside the popup so large stacks are not truncated.
 
 ## Detection confidence
 
@@ -51,11 +55,14 @@ Multiple independent indicators increase the final confidence score.
 
 An empty checked result means no advisory was returned for that exact mapping at
 the time of the query. It is not a guarantee that the product is vulnerability-free.
+Duplicate advisory records that resolve to the same CVE ID are counted once.
 
 ## Data handling
 
 - DOM content is bounded to 1.5 MB and used only during local detection.
 - Visible text, inline scripts, and inline styles use separate bounded samples.
+- JavaScript inspection reads only own data-property descriptors. It does not
+  call accessors, invoke functions, or execute page-provided code.
 - DOM content and response headers are not stored in completed reports.
 - `Set-Cookie` is excluded from collection.
 - Temporary scan results use `chrome.storage.session` and disappear when the
@@ -72,7 +79,7 @@ headers. Always inspect the evidence and validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-2.0.0.zip`.
+1. Extract `dist/stacksentry-2.1.0.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.

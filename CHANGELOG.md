@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+- Expanded runtime inspection from a short hand-picked global list to all 5,606
+  JavaScript property paths used by the maintained catalog.
+- Preserved case-sensitive JavaScript property names during matching instead of
+  lowercasing them like HTTP header names.
+- Added catalog-driven evaluation for 1,572 DOM existence selectors, 55 DOM
+  text selectors, 166 attribute selector groups, and two DOM properties.
+- Kept runtime reads passive by inspecting data properties only; accessor
+  getters are never invoked and page code is never executed by StackSentry.
+- Added positive and nearby-negative fixtures for JavaScript, DOM existence,
+  DOM text, DOM attribute, and DOM property detections.
+- Replaced the three-item popup preview with a scrollable, category-grouped list
+  that displays every technology found on the current page.
+- Hardened CVE result accuracy by deduplicating advisory aliases, preserving the
+  strongest severity, and testing exact-version hits, empty results, missing
+  versions, unsupported mappings, and upstream HTTP failures.
+
 ## 2.0.0
 
 - Expanded passive detection from 49 focused definitions to a combined catalog

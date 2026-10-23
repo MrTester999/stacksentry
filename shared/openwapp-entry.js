@@ -1,10 +1,18 @@
 import fingerprints from "@openwapp/fingerprints";
-import { Catalog, Matcher, Observation } from "@openwapp/matcher";
+import { Catalog, Matcher, Observation, Requirements } from "@openwapp/matcher";
 
 const catalog = Catalog.decodeSync(fingerprints);
+const requirements = Requirements.fromCatalog(catalog);
 const PALETTE = ["#39e2ca", "#6389ff", "#f2b84b", "#ff6e83", "#9b8cff", "#50c878", "#ff914d", "#42b8d5"];
 
 export const OPENWAPP_CATALOG_SIZE = catalog.technologies.size;
+export const OPENWAPP_REQUIREMENTS = Object.freeze({
+  js: [...requirements.js],
+  domExists: [...requirements.domExists],
+  domText: [...requirements.domText],
+  domAttribute: [...requirements.domAttribute].map(([selector, names]) => [selector, [...names]]),
+  domProperty: [...requirements.domProperty].map(([selector, names]) => [selector, [...names]])
+});
 
 function slug(value) {
   return String(value).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 54) || "technology";
@@ -24,8 +32,8 @@ function list(value) {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : value ? [String(value)] : [];
 }
 
-function valuesMap(input = {}) {
-  return new Map(Object.entries(input).map(([key, value]) => [key.toLowerCase(), list(value)]).filter(([, values]) => values.length));
+function valuesMap(input = {}, lowercaseKeys = true) {
+  return new Map(Object.entries(input).map(([key, value]) => [lowercaseKeys ? key.toLowerCase() : key, list(value)]).filter(([, values]) => values.length));
 }
 
 function metaMap(meta = []) {
@@ -39,6 +47,10 @@ function metaMap(meta = []) {
   return output;
 }
 
+function nestedValuesMap(input = {}) {
+  return new Map(Object.entries(input).map(([selector, values]) => [selector, valuesMap(values, false)]).filter(([, values]) => values.size));
+}
+
 function safeCpeTemplate(cpe = "") {
   const parts = String(cpe).split(":");
   if (parts.length !== 13 || parts[0] !== "cpe" || parts[1] !== "2.3" || parts[5] !== "*") return "";
@@ -50,18 +62,26 @@ function ruleValues(rule, observation) {
   if (rule._tag === "Header") return observation.header.get(rule.name) || [];
   if (rule._tag === "Meta") return observation.meta.get(rule.name) || [];
   if (rule._tag === "Js") return observation.js.get(rule.property) || [];
+  if (rule._tag === "DomExists") return observation.domExists.has(rule.selector) ? [rule.selector] : [];
+  if (rule._tag === "DomText") return observation.domText.get(rule.selector) || [];
+  if (rule._tag === "DomAttribute") return observation.domAttribute.get(rule.selector)?.get(rule.attribute) || [];
+  if (rule._tag === "DomProperty") return observation.domProperty.get(rule.selector)?.get(rule.property) || [];
   const key = { Url: "url", Html: "html", Text: "text", Css: "css", Script: "script", ScriptSrc: "scriptSrc", Xhr: "xhr" }[rule._tag];
   return key ? observation[key] || [] : [];
 }
 
 function evidenceType(tag) {
-  return { Header: "header", Meta: "meta", Js: "global", ScriptSrc: "asset", Xhr: "resource", Url: "url", Css: "style", Script: "inline-script", Text: "text", Html: "dom" }[tag] || "catalog";
+  return { Header: "header", Meta: "meta", Js: "global", ScriptSrc: "asset", Xhr: "resource", Url: "url", Css: "style", Script: "inline-script", Text: "text", Html: "dom", DomExists: "dom", DomText: "dom-text", DomAttribute: "dom-attribute", DomProperty: "dom-property" }[tag] || "catalog";
 }
 
 function evidenceDetail(rule, value) {
   if (rule._tag === "Header") return `${rule.name}: ${String(value).slice(0, 180)}`;
   if (rule._tag === "Meta") return `${rule.name}: ${String(value).slice(0, 180)}`;
   if (rule._tag === "Js") return `${rule.property}: ${String(value).slice(0, 120)}`;
+  if (rule._tag === "DomExists") return `Matched selector: ${rule.selector}`;
+  if (rule._tag === "DomText") return `${rule.selector}: ${String(value).slice(0, 160)}`;
+  if (rule._tag === "DomAttribute") return `${rule.selector} [${rule.attribute}]: ${String(value).slice(0, 160)}`;
+  if (rule._tag === "DomProperty") return `${rule.selector} .${rule.property}: ${String(value).slice(0, 120)}`;
   if (["ScriptSrc", "Xhr", "Url"].includes(rule._tag)) return String(value).slice(0, 220);
   return `Maintained catalog ${evidenceType(rule._tag)} fingerprint matched`;
 }
@@ -108,7 +128,11 @@ export function analyzeOpenWappEvidence(evidence = {}) {
     xhr: [...new Set(xhr)],
     header: valuesMap(evidence.headers),
     meta: metaMap(evidence.meta),
-    js: valuesMap(evidence.js)
+    js: valuesMap(evidence.js, false),
+    domExists: new Set(evidence.domExists || []),
+    domText: valuesMap(evidence.domText),
+    domAttribute: nestedValuesMap(evidence.domAttribute),
+    domProperty: nestedValuesMap(evidence.domProperty)
   });
 
   return Matcher.match(catalog, observation).map((detection) => {

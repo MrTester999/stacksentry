@@ -58,6 +58,17 @@ function normalizeNvd(item) {
   };
 }
 
+function uniqueVulnerabilities(records) {
+  const unique = new Map();
+  for (const record of records) {
+    const key = String(record.id || record.sourceId || "").toUpperCase();
+    if (!key) continue;
+    const existing = unique.get(key);
+    if (!existing || severityRank(record.severity) > severityRank(existing.severity)) unique.set(key, record);
+  }
+  return [...unique.values()].sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || a.id.localeCompare(b.id));
+}
+
 export function vulnerabilityCacheKey(technology) {
   if (!technology?.version) return "";
   if (technology.package) return `osv:${technology.package.ecosystem}:${technology.package.name}:${technology.version}`;
@@ -83,7 +94,7 @@ export async function lookupTechnologyVulnerabilities(technology, fetchFn = fetc
     return {
       status: "checked",
       source: "OSV",
-      vulnerabilities: (payload.vulns || []).map(normalizeOsv).sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || a.id.localeCompare(b.id))
+      vulnerabilities: uniqueVulnerabilities((payload.vulns || []).map(normalizeOsv))
     };
   }
   if (technology.cpe) {
@@ -94,7 +105,7 @@ export async function lookupTechnologyVulnerabilities(technology, fetchFn = fetc
     return {
       status: "checked",
       source: "NVD",
-      vulnerabilities: (payload.vulnerabilities || []).map(normalizeNvd).sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || a.id.localeCompare(b.id))
+      vulnerabilities: uniqueVulnerabilities((payload.vulnerabilities || []).map(normalizeNvd))
     };
   }
   return { status: "unsupported", vulnerabilities: [] };

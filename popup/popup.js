@@ -51,7 +51,16 @@ function render() {
     empty.textContent = result ? "No known technologies detected." : "No scan results for this page yet.";
     elements.technologyPreview.append(empty);
   } else {
-    for (const technology of result.technologies.slice(0, 3)) {
+    const grouped = Map.groupBy(result.technologies, (technology) => technology.category || "Other");
+    for (const [category, technologies] of [...grouped].sort((a, b) => a[0].localeCompare(b[0]))) {
+      const group = document.createElement("section");
+      group.className = "technology-group";
+      const heading = document.createElement("h2");
+      heading.textContent = `${category} · ${technologies.length}`;
+      const items = document.createElement("div");
+      items.className = "technology-items";
+      group.append(heading, items);
+      for (const technology of technologies.sort((a, b) => a.name.localeCompare(b.name))) {
       const pill = document.createElement("span");
       pill.className = "technology-pill";
       const icon = document.createElement("img");
@@ -64,13 +73,9 @@ function render() {
         version.textContent = ` ${technology.version}`;
         pill.append(version);
       }
-      elements.technologyPreview.append(pill);
-    }
-    if (result.technologies.length > 3) {
-      const more = document.createElement("span");
-      more.className = "technology-more";
-      more.textContent = `+${result.technologies.length - 3} more`;
-      elements.technologyPreview.append(more);
+      items.append(pill);
+      }
+      elements.technologyPreview.append(group);
     }
   }
 }
