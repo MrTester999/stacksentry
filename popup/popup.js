@@ -30,6 +30,7 @@ function vulnerabilityLabel(technology) {
     checked: { text: "0 CVEs returned", className: "checked" },
     pending: { text: "Checking exact version…", className: "pending" },
     "version-unknown": { text: "Version unknown", className: "unknown" },
+    "version-inexact": { text: "Partial version · CVE skipped", className: "unknown" },
     disabled: { text: "CVE check off", className: "muted" },
     "lookup-limit": { text: "Not checked · scan limit", className: "muted" },
     unsupported: { text: "No verified mapping", className: "muted" },
@@ -94,8 +95,8 @@ function render() {
         confidence.textContent = `${technology.score}% ${technology.confidence} confidence`;
         identity.append(name, confidence);
         const version = document.createElement("div");
-        version.className = `technology-version${technology.version ? " exact" : ""}`;
-        version.append(Object.assign(document.createElement("small"), { textContent: technology.version ? "CONFIRMED" : "VERSION" }), Object.assign(document.createElement("b"), { textContent: technology.version || "Unknown · not exposed" }));
+        version.className = `technology-version${technology.versionExact ? " exact" : ""}`;
+        version.append(Object.assign(document.createElement("small"), { textContent: technology.versionExact ? "CONFIRMED" : technology.version ? "PARTIAL" : "VERSION" }), Object.assign(document.createElement("b"), { textContent: technology.version || "Unknown · not exposed" }));
         const statusData = vulnerabilityLabel(technology);
         const status = document.createElement("span");
         status.className = `technology-cve ${statusData.className}`;

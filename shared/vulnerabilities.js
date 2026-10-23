@@ -1,3 +1,5 @@
+import { isExactVersion } from "./version.js";
+
 const OSV_API = "https://api.osv.dev/v1/query";
 const NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0";
 
@@ -70,7 +72,7 @@ function uniqueVulnerabilities(records) {
 }
 
 export function vulnerabilityCacheKey(technology) {
-  if (!technology?.version) return "";
+  if (!isExactVersion(technology?.version)) return "";
   if (technology.package) return `osv:${technology.package.ecosystem}:${technology.package.name}:${technology.version}`;
   if (technology.cpe) return `nvd:${technology.cpe.replace("{version}", technology.version)}`;
   return "";
@@ -78,6 +80,7 @@ export function vulnerabilityCacheKey(technology) {
 
 export async function lookupTechnologyVulnerabilities(technology, fetchFn = fetch) {
   if (!technology?.version) return { status: "version-unknown", vulnerabilities: [] };
+  if (!isExactVersion(technology.version)) return { status: "version-inexact", vulnerabilities: [] };
   const signal = typeof AbortSignal?.timeout === "function" ? AbortSignal.timeout(12_000) : undefined;
   if (technology.package) {
     const query = { basis: "exact-version", source: "OSV", version: technology.version, ecosystem: technology.package.ecosystem, package: technology.package.name };

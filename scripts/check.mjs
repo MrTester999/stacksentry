@@ -5,6 +5,7 @@ import fingerprints from "@openwapp/fingerprints";
 import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
 import { collectCatalogProperties } from "../shared/safe-properties.js";
+import { isExactVersion } from "../shared/version.js";
 import { TECHNOLOGIES } from "../data/technologies.js";
 import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, OPENWAPP_REQUIREMENTS, openWappTechnologyId } from "../vendor/openwapp-engine.js";
 
@@ -21,7 +22,7 @@ const required = [
   manifest.background.service_worker,
   manifest.action.default_popup,
   ...Object.values(manifest.icons),
-  "data/technologies.js", "shared/detector.js", "shared/safe-properties.js", "shared/vulnerabilities.js",
+  "data/technologies.js", "shared/detector.js", "shared/safe-properties.js", "shared/version.js", "shared/vulnerabilities.js",
   "popup/popup.css", "popup/popup.js", "report/index.html", "report/report.css", "report/report.js",
   "screenshots/stacksentry-popup.png", "screenshots/stacksentry-report.png",
   "vendor/openwapp-engine.js", "vendor/openwapp-fingerprints-LICENSE.txt", "vendor/openwapp-matcher-LICENSE.txt", "vendor/openwapp-upstream.json",
@@ -40,12 +41,20 @@ assert.ok(OPENWAPP_REQUIREMENTS.domAttribute.length >= 150, "full catalog DOM at
 const catalogIconFiles = new Set(await readdir(new URL("icons/catalog/", root)));
 assert.equal(catalogIconFiles.size, OPENWAPP_CATALOG_SIZE, "catalog icon count does not match catalog size");
 for (const name of Object.keys(fingerprints.technologies)) assert.ok(catalogIconFiles.has(`${openWappTechnologyId(name)}.svg`), `${name} catalog icon is missing`);
-for (const path of ["background/service-worker.js", "data/technologies.js", "shared/detector.js", "shared/safe-properties.js", "shared/vulnerabilities.js", "popup/popup.js", "report/report.js"]) {
+for (const path of ["background/service-worker.js", "data/technologies.js", "shared/detector.js", "shared/safe-properties.js", "shared/version.js", "shared/vulnerabilities.js", "popup/popup.js", "report/report.js", "scripts/audit-cve-live.mjs"]) {
   execFileSync(process.execPath, ["--check", new URL(path, root).pathname], { stdio: "pipe" });
 }
 for (const technology of TECHNOLOGIES) {
   for (const group of Object.values(technology.matchers || {})) {
     for (const [pattern] of group) assert.doesNotThrow(() => new RegExp(pattern, "i"), `${technology.id} has an invalid matcher`);
+  }
+  for (const mapping of [technology.package, ...Object.values(technology.packages || {})].filter(Boolean)) {
+    assert.ok(["npm", "PyPI", "Packagist", "RubyGems"].includes(mapping.ecosystem), `${technology.id} has an unsupported OSV ecosystem mapping`);
+    assert.ok(mapping.name && !/\s/.test(mapping.name), `${technology.id} has an invalid OSV package name`);
+  }
+  if (technology.cpe) {
+    assert.equal((technology.cpe.match(/\{version\}/g) || []).length, 1, `${technology.id} CPE must contain one exact version placeholder`);
+    assert.equal(technology.cpe.replace("{version}", "1.2.3").split(":").length, 13, `${technology.id} CPE is not CPE 2.3`);
   }
 }
 
@@ -187,6 +196,12 @@ assert.ok(popupSource.includes("technology-group"), "popup does not group the co
 const summary = summarizeTechnologies(findings);
 assert.equal(summary.total, findings.length);
 assert.ok(summary.versioned >= 7);
+assert.equal(isExactVersion("3.4.1"), true);
+assert.equal(isExactVersion("10.0"), true);
+assert.equal(isExactVersion("4"), false, "major-only versions must not trigger CVE attribution");
+assert.equal(isExactVersion("3.x"), false);
+assert.equal(vulnerabilityCacheKey({ version: "4", package: { ecosystem: "npm", name: "font-awesome" } }), "");
+assert.equal((await lookupTechnologyVulnerabilities({ version: "4", package: { ecosystem: "npm", name: "font-awesome" } }, () => { throw new Error("partial version must not fetch"); })).status, "version-inexact");
 
 let osvRequest = null;
 const osvResult = await lookupTechnologyVulnerabilities({ id: "jquery", version: "3.4.1", package: { ecosystem: "npm", name: "jquery" } }, async (url, options) => {
@@ -281,7 +296,7 @@ assert.equal(response.data.summary.vulnerabilities.total, 0);
 
 const updatedPopupSource = await readFile(new URL("popup/popup.js", root), "utf8");
 const reportSource = await readFile(new URL("report/report.js", root), "utf8");
-for (const status of ["checked", "pending", "version-unknown", "disabled", "lookup-limit", "unsupported", "error"]) assert.ok(updatedPopupSource.includes(status), `popup is missing the ${status} CVE state`);
+for (const status of ["checked", "pending", "version-unknown", "version-inexact", "disabled", "lookup-limit", "unsupported", "error"]) assert.ok(updatedPopupSource.includes(status), `popup is missing the ${status} CVE state`);
 assert.ok(updatedPopupSource.includes("chrome.storage.onChanged"), "popup does not receive completed asynchronous CVE results");
 assert.ok(reportSource.includes("Exact version match"), "report does not explain exact-version CVE attribution");
 assert.ok(reportSource.includes("chrome.storage.onChanged"), "report does not receive completed asynchronous CVE results");
@@ -289,6 +304,7 @@ assert.ok(reportSource.includes("chrome.storage.onChanged"), "report does not re
 console.log(`✓ Manifest v${manifest.version} and ${new Set(required).size} required assets`);
 console.log(`✓ ${findings.length} technology detections across header, meta, DOM, script, and global evidence`);
 console.log(`✓ ${TECHNOLOGIES.length} technology definitions have valid matcher syntax`);
+console.log("✓ Reviewed package ecosystems, generation mappings, CPE templates, and exact-version gate");
 console.log(`✓ ${OPENWAPP_CATALOG_SIZE} maintained catalog fingerprints and local icons`);
 console.log(`✓ ${OPENWAPP_REQUIREMENTS.js.length} safe JavaScript paths and ${OPENWAPP_REQUIREMENTS.domExists.length} DOM selectors wired into collection`);
 console.log("✓ Positive and nearby-negative fingerprint fixtures");

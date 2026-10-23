@@ -54,6 +54,7 @@ function vulnerabilityStatusLabel(technology) {
     checked: "0 CVEs returned",
     pending: "Exact lookup pending",
     "version-unknown": "Version unknown",
+    "version-inexact": "Partial version · CVE skipped",
     disabled: "CVE check disabled",
     "lookup-limit": "Not checked · scan limit",
     unsupported: "No verified mapping",
@@ -109,7 +110,7 @@ function renderTechnologies() {
     name.append(textNode("strong", technology.name), textNode("span", technology.category), textNode("em", technology.source || "StackSentry Core"));
     const version = document.createElement("div");
     version.className = "version";
-    version.append(textNode("strong", technology.version || "Unknown", technology.version ? "" : "unknown"), textNode("span", "Version"));
+    version.append(textNode("strong", technology.version || "Unknown", technology.versionExact ? "" : "unknown"), textNode("span", technology.versionExact ? "Exact version" : technology.version ? "Partial version" : "Version"));
     const confidence = document.createElement("div");
     confidence.className = "confidence";
     confidence.append(textNode("strong", `${technology.score}%`, technology.confidence), textNode("span", `${technology.confidence} confidence`));
@@ -132,6 +133,7 @@ function renderTechnologies() {
     const note = document.createElement("div");
     note.className = "verification-note";
     const statusText = !technology.version ? "Version unknown — CVE matching skipped to avoid false attribution."
+      : technology.vulnerabilityStatus === "version-inexact" ? `Only partial version ${technology.version} was observed — exact CVE matching was skipped to prevent false attribution.`
       : technology.vulnerabilityStatus === "pending" ? "Exact-version CVE lookup is still running in the background."
       : technology.vulnerabilityStatus === "checked" ? `${technology.vulnerabilitySource} returned ${technology.vulnerabilities?.length || 0} CVE record${technology.vulnerabilities?.length === 1 ? "" : "s"} for the exact detected version.${technology.cveCached ? " Result loaded from the 24-hour local cache." : ""}`
       : technology.vulnerabilityStatus === "disabled" ? "CVE checks were disabled for this scan. No vulnerability conclusion was made."

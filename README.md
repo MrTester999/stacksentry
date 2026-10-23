@@ -6,7 +6,7 @@
 
   **Automatic web-stack fingerprinting with evidence, exact versions, and version-aware CVE intelligence.**
 
-  [![Version](https://img.shields.io/badge/version-2.2.0-39cdb9?style=flat-square)](manifest.json)
+  [![Version](https://img.shields.io/badge/version-2.2.1-39cdb9?style=flat-square)](manifest.json)
   [![Fingerprints](https://img.shields.io/badge/fingerprints-7%2C628-6389ff?style=flat-square)](#technology-coverage)
   [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](manifest.json)
   [![Data](https://img.shields.io/badge/CVE%20data-OSV%20%2B%20NVD-5d84ff?style=flat-square)](#version-aware-vulnerability-intelligence)
@@ -59,6 +59,8 @@ are never guessed and are never labeled vulnerable.
 - **Technology icons:** every detected product has a bundled local brand or
   category icon; no remote icon requests are made.
 - **Version extraction:** records the version only when a fingerprint exposes it.
+- **Strict exact-version gate:** partial versions such as `4` are displayed but
+  never sent to OSV/NVD and never used for CVE attribution.
 - **Exact-query provenance:** checked results record the OSV package or NVD CPE,
   exact version, source, and check time.
 - **Evidence and confidence:** every detection shows why it matched.
@@ -102,7 +104,7 @@ of performing a broad product-name lookup.
 
 ## Installation
 
-1. Download and extract [`stacksentry-2.2.0.zip`](dist/stacksentry-2.2.0.zip).
+1. Download and extract [`stacksentry-2.2.1.zip`](dist/stacksentry-2.2.1.zip).
 2. Open `chrome://extensions`.
 3. Enable **Developer mode**.
 4. Select **Load unpacked**.
@@ -167,6 +169,7 @@ StackSentry never blocks, redirects, or modifies network requests.
 ```bash
 npm install --ignore-scripts
 npm run check
+npm run audit:cve
 npm run build
 ```
 
@@ -174,6 +177,10 @@ The check suite validates manifest assets, JavaScript syntax, positive and
 nearby-negative fingerprints, all 7,628 local catalog icons, catalog/core
 deduplication, exact-version OSV/NVD normalization, the master switch, storage,
 and Chrome event registration.
+
+`npm run audit:cve` is a separate live-provider smoke test. It compares a known
+vulnerable jQuery release with its fixed release, proves partial versions never
+leave the browser, and validates an exact NVD CPE query.
 
 ## License
 
@@ -186,12 +193,12 @@ fingerprint source and all dependency notices are included in the release.
 - [Detailed documentation](DOCUMENTATION.md)
 - [Plain-text guide](DOCUMENTATION.txt)
 - [Changelog](CHANGELOG.md)
-- [Release ZIP](dist/stacksentry-2.2.0.zip)
+- [Release ZIP](dist/stacksentry-2.2.1.zip)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ---
 
 <div align="center">
-  <strong>StackSentry v2.2.0</strong><br>
+  <strong>StackSentry v2.2.1</strong><br>
   Evidence first. Exact versions. Honest vulnerability intelligence.
 </div>

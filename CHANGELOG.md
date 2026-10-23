@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.1
+
+- Added a strict exact-version gate before OSV or NVD enrichment. Major-only,
+  wildcard, or otherwise partial versions are never queried or attributed.
+- Added a distinct `version-inexact` state rendered as **Partial version — CVE
+  skipped**, preventing values such as `Font Awesome 4` from being treated as an
+  exact affected release.
+- Audited core OSV ecosystems, generation-specific package mappings, and CPE 2.3
+  templates with release-blocking assertions.
+- Added positive checks for exact versions and negative checks proving partial
+  versions cannot create a cache key or network request.
+- Added `npm run audit:cve`, a repeatable live OSV/NVD control comparing known
+  vulnerable and fixed releases without making network availability a build gate.
+
 ## 2.2.0
 
 - Redesigned the popup inventory as category-grouped rows with icon,

@@ -51,6 +51,8 @@ Multiple independent indicators increase the final confidence score.
 - **Checked:** the exact version was queried successfully.
 - **Version unknown:** the technology was detected but no reliable version was
   available, so no CVE claim was made.
+- **Partial version:** a major-only or non-exact version was visible, but the
+  CVE query was skipped to prevent false attribution.
 - **Unsupported:** the technology lacks a reviewed package or CPE mapping.
 - **Error:** the configured public service was temporarily unavailable.
 - **Check disabled:** CVE enrichment was disabled for this scan.
@@ -85,7 +87,7 @@ headers. Always inspect the evidence and validate high-impact findings manually.
 
 ## Install
 
-1. Extract `dist/stacksentry-2.2.0.zip`.
+1. Extract `dist/stacksentry-2.2.1.zip`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Select **Load unpacked** and choose the extracted directory.

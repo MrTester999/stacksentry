@@ -1,6 +1,7 @@
 import { analyzeEvidence, mergeTechnologyDetections, summarizeTechnologies } from "../shared/detector.js";
 import { lookupTechnologyVulnerabilities, summarizeVulnerabilities, vulnerabilityCacheKey } from "../shared/vulnerabilities.js";
 import { collectCatalogProperties } from "../shared/safe-properties.js";
+import { isExactVersion } from "../shared/version.js";
 import { analyzeOpenWappEvidence, OPENWAPP_CATALOG_SIZE, OPENWAPP_REQUIREMENTS } from "../vendor/openwapp-engine.js";
 
 const RESULT_PREFIX = "scanResult:";
@@ -213,11 +214,12 @@ async function cachedLookup(technology) {
 }
 
 async function addVulnerabilities(technologies, enabled) {
-  if (!enabled) return technologies.map((item) => ({ ...item, vulnerabilityStatus: item.version ? "disabled" : "version-unknown", vulnerabilities: [] }));
-  const eligible = technologies.filter((item) => item.version && (item.package || item.cpe));
+  const unqueriedStatus = (item) => !item.version ? "version-unknown" : !isExactVersion(item.version) ? "version-inexact" : "disabled";
+  if (!enabled) return technologies.map((item) => ({ ...item, vulnerabilityStatus: unqueriedStatus(item), vulnerabilities: [] }));
+  const eligible = technologies.filter((item) => isExactVersion(item.version) && (item.package || item.cpe));
   const candidates = eligible.slice(0, MAX_CVE_LOOKUPS);
   const candidateIds = new Set(candidates.map((item) => item.id));
-  if (!candidates.length) return technologies.map((item) => ({ ...item, vulnerabilityStatus: item.version ? "unsupported" : "version-unknown", vulnerabilities: [] }));
+  if (!candidates.length) return technologies.map((item) => ({ ...item, vulnerabilityStatus: !item.version ? "version-unknown" : !isExactVersion(item.version) ? "version-inexact" : "unsupported", vulnerabilities: [] }));
   const results = new Map();
   for (const technology of candidates) {
     try {
@@ -231,6 +233,7 @@ async function addVulnerabilities(technologies, enabled) {
     const result = results.get(technology.id);
     if (!result) {
       const vulnerabilityStatus = !technology.version ? "version-unknown"
+        : !isExactVersion(technology.version) ? "version-inexact"
         : (technology.package || technology.cpe) && !candidateIds.has(technology.id) ? "lookup-limit"
         : "unsupported";
       return { ...technology, vulnerabilityStatus, vulnerabilities: [] };
@@ -266,10 +269,10 @@ async function scanTab(tabId, options = {}) {
   const captured = headerState[`${HEADER_PREFIX}${tabId}`];
   const headers = captured?.url === tab.url ? captured.headers : {};
   const evidence = { ...dom, globals, js: globals.js || {}, headers };
-  const detected = mergeTechnologyDetections(analyzeEvidence(evidence), analyzeOpenWappEvidence(evidence));
+  const detected = mergeTechnologyDetections(analyzeEvidence(evidence), analyzeOpenWappEvidence(evidence)).map((item) => ({ ...item, versionExact: isExactVersion(item.version) }));
   const shouldCheckCves = options.checkCves ?? currentSettings.checkCves;
   const technologies = options.deferCves && shouldCheckCves
-    ? detected.map((item) => ({ ...item, vulnerabilityStatus: item.version && (item.package || item.cpe) ? "pending" : item.version ? "unsupported" : "version-unknown", vulnerabilities: [] }))
+    ? detected.map((item) => ({ ...item, vulnerabilityStatus: !item.version ? "version-unknown" : !item.versionExact ? "version-inexact" : (item.package || item.cpe) ? "pending" : "unsupported", vulnerabilities: [] }))
     : await addVulnerabilities(detected, shouldCheckCves);
   const result = {
     tabId,

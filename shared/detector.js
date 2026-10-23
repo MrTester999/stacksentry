@@ -1,4 +1,5 @@
 import { TECHNOLOGIES } from "../data/technologies.js";
+import { isExactVersion } from "./version.js";
 
 const CONFIDENCE = { low: 35, medium: 65, high: 90 };
 
@@ -151,7 +152,7 @@ export function summarizeTechnologies(technologies) {
   let versioned = 0;
   for (const technology of technologies) {
     categories[technology.category] = (categories[technology.category] || 0) + 1;
-    if (technology.version) versioned += 1;
+    if (isExactVersion(technology.version)) versioned += 1;
   }
   return { total: technologies.length, versioned, categories };
 }
