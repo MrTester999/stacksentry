@@ -1,0 +1,50 @@
+STACKSENTRY v1.0.0
+==================
+
+PURPOSE
+-------
+StackSentry automatically fingerprints web technologies, records observable
+versions and evidence, and checks exact supported versions against OSV or NVD.
+
+QUICK START
+-----------
+1. Extract dist/stacksentry-1.0.0.zip.
+2. Open chrome://extensions.
+3. Enable Developer mode.
+4. Select Load unpacked and choose the extracted stacksentry folder.
+5. Visit an HTTP or HTTPS site and wait for it to load.
+6. Open the StackSentry popup to view the summary or full report.
+
+CONTROLS
+--------
+Master switch   - Turns all extension scanning on or off.
+Auto Scan       - Analyzes every website after navigation.
+CVE checks      - Queries exact supported versions through OSV or NVD.
+Exclude site    - Pauses Auto Scan for the current hostname and subdomains.
+Analyze site    - Runs a manual scan.
+Alt+Shift+S     - Scans the active site and opens its report.
+
+ACCURACY
+--------
+Every detection contains evidence and a confidence score. CVE checks run only
+when a reliable exact version and reviewed package/CPE mapping are available.
+Unknown versions are not guessed and are not labeled vulnerable.
+
+PRIVACY
+-------
+- Fingerprinting runs locally.
+- Cookies and Set-Cookie headers are not collected.
+- Page HTML and headers are not stored in completed reports.
+- Only package/product names and exact versions are sent for CVE lookup.
+- CVE responses are cached locally for 24 hours.
+- There is no StackSentry account, telemetry, or remote analysis service.
+
+LIMITS
+------
+Browser inspection cannot identify every backend service. Proxies may hide the
+origin, builds may remove fingerprints, and products may suppress their versions.
+A matched advisory requires manual validation and is not proof of exploitability.
+
+RESPONSIBLE USE
+---------------
+Use StackSentry only on systems you own or are authorized to assess.

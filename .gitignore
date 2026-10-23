@@ -1,0 +1,4 @@
+node_modules/
+*.log
+dist/*.zip
+!dist/stacksentry-1.0.0.zip

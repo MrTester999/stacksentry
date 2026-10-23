@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StackSentry Intelligence Report</title>
+  <link rel="stylesheet" href="report.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><img src="../icons/icon128.png" alt=""><div><h1>StackSentry</h1><p>WEB INTELLIGENCE</p></div><span>PRO</span></div>
+      <section class="privacy"><b>◆</b><div><strong>Privacy-aware analysis</strong><small>Page fingerprints stay local. Only product and exact version are sent for CVE lookup.</small></div></section>
+      <nav id="categoryNav"></nav>
+      <div class="sidebar-foot"><span>OSV + NVD</span><small>v1.0.0</small></div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="site-heading"><span id="siteIcon">S</span><div><small>INTELLIGENCE REPORT</small><h2 id="siteTitle">Loading scan…</h2><p id="siteUrl">—</p></div></div>
+        <div class="actions"><button id="exportReport" type="button">↓ Export JSON</button><button id="rescan" class="primary" type="button">◎ Rescan site</button></div>
+      </header>
+
+      <section class="overview">
+        <div class="overview-copy"><span>SCAN OVERVIEW</span><h3>Technology surface</h3><p id="scanMeta">Waiting for local scan data…</p></div>
+        <div class="metrics">
+          <article><small>TECHNOLOGIES</small><strong id="technologyTotal">0</strong><span>detected</span></article>
+          <article><small>EXACT VERSIONS</small><strong id="versionTotal">0</strong><span>version-aware</span></article>
+          <article class="danger"><small>KNOWN CVEs</small><strong id="vulnerabilityTotal">0</strong><span id="affectedTotal">0 affected products</span></article>
+          <article><small>CRITICAL / HIGH</small><strong id="highRiskTotal">0</strong><span>prioritize review</span></article>
+        </div>
+      </section>
+
+      <section class="toolbar">
+        <div class="search"><span>⌕</span><input id="search" type="search" placeholder="Search technologies, versions, evidence, or CVE IDs…"></div>
+        <select id="viewFilter"><option value="all">All technologies</option><option value="affected">Known CVEs</option><option value="versioned">Exact versions</option><option value="unknown">Unknown versions</option></select>
+        <button id="clearFilters" type="button">Clear filters</button>
+      </section>
+
+      <section class="content-grid">
+        <div class="technologies-column">
+          <div class="section-head"><div><small>DETECTED STACK</small><h3>Technologies</h3></div><span id="resultCount">0 results</span></div>
+          <div id="technologyList" class="technology-list"></div>
+        </div>
+        <aside class="risk-column">
+          <div class="section-head"><div><small>VERSION-AWARE</small><h3>Vulnerability intelligence</h3></div></div>
+          <div class="severity-summary">
+            <span class="critical"><i></i>Critical <b id="criticalCount">0</b></span>
+            <span class="high"><i></i>High <b id="highCount">0</b></span>
+            <span class="medium"><i></i>Medium <b id="mediumCount">0</b></span>
+            <span class="low"><i></i>Low <b id="lowCount">0</b></span>
+          </div>
+          <div id="vulnerabilityList" class="vulnerability-list"></div>
+        </aside>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="busy" class="busy"><div></div><strong>Analyzing website…</strong><span>Local fingerprinting and version-aware CVE lookup</span></div>
+  <script type="module" src="report.js"></script>
+</body>
+</html>

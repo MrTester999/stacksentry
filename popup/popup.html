@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StackSentry</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header class="brand">
+      <img src="../icons/icon128.png" alt="">
+      <div><h1>StackSentry</h1><p>TECHNOLOGY &amp; CVE INTELLIGENCE</p></div>
+      <span>PRO</span>
+      <label class="master-switch" title="Turn StackSentry on or off"><input id="masterEnabled" type="checkbox"><i></i></label>
+    </header>
+
+    <section class="site-card">
+      <span class="site-state" id="siteState"></span>
+      <div><small>CURRENT SITE</small><strong id="siteTitle">Checking current tab…</strong><p id="siteUrl">—</p></div>
+    </section>
+
+    <section class="summary" id="summary">
+      <div><small>TECHNOLOGIES</small><strong id="technologyCount">—</strong></div>
+      <div><small>VERSIONED</small><strong id="versionCount">—</strong></div>
+      <div class="risk"><small>KNOWN CVEs</small><strong id="cveCount">—</strong></div>
+    </section>
+
+    <div id="technologyPreview" class="technology-preview"><span>No scan results for this page yet.</span></div>
+
+    <button id="scanSite" class="scan-button" type="button">
+      <span>◎</span><div><strong>Analyze this website</strong><small>Fingerprint stack, versions, and known CVEs</small></div><b>→</b>
+    </button>
+    <button id="openReport" class="report-button" type="button" disabled>
+      <span>▦</span><div><strong>Open full intelligence report</strong><small>Evidence, confidence, versions, and CVE details</small></div><b>→</b>
+    </button>
+
+    <section class="controls">
+      <label><div><strong>Auto Scan</strong><small>Analyze every website after it loads</small></div><input id="autoScan" type="checkbox"><i></i></label>
+      <label><div><strong>Version-aware CVE checks</strong><small>Query only exact detected product versions</small></div><input id="checkCves" type="checkbox"><i></i></label>
+      <button id="excludeSite" type="button"><span>⊘</span><div><strong>Exclude this site</strong><small>Pause automatic analysis for this hostname</small></div></button>
+    </section>
+
+    <footer><span>◆ Local fingerprinting · OSV + NVD intelligence</span><small>v1.0.0</small></footer>
+  </main>
+  <div id="toast" role="status"></div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
